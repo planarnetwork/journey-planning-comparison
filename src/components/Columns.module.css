@@ -1,0 +1,339 @@
+.columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(var(--colmin, 268px), 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg);
+}
+
+@media (max-width: 1180px) {
+  .columns {
+    --colmin: 236px;
+  }
+}
+
+@media (max-width: 900px) {
+  .columns {
+    --colmin: 212px;
+  }
+}
+
+.column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+
+.column:last-child {
+  border-right: 0;
+}
+
+.head {
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  padding: 8px 10px 7px;
+  flex: none;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--h);
+  flex: none;
+}
+
+.head b {
+  font: 600 12px / 1.2 var(--sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.head i {
+  font: 400 9.5px / 1.3 var(--mono);
+  font-style: normal;
+  color: var(--dimmer);
+  display: block;
+  margin: 3px 0 0 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.perf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 7px 0 0 15px;
+}
+
+.stat {
+  font: 400 9px / 1 var(--mono);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 3px 4px;
+}
+
+.stat b {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.statBest {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+
+.statBest b {
+  color: var(--acc);
+}
+
+.body {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+  background: var(--panel);
+}
+
+.journey {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.journey:hover {
+  background: var(--panel2);
+}
+
+.journeyOn {
+  background: var(--panel2);
+  box-shadow: inset 2px 0 0 var(--h);
+}
+
+.select {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.journeyHead {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-family: var(--mono);
+}
+
+.journeyHead .clock {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.journeyHead .arrow {
+  color: var(--dimmer);
+}
+
+.journeyHead .spacer {
+  flex: 1;
+}
+
+.journeyHead .duration {
+  font-size: 10.5px;
+  color: var(--dim);
+}
+
+.operators {
+  display: flex;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.operators s {
+  text-decoration: none;
+  height: 3px;
+  flex: 1;
+  background: var(--o);
+  border-radius: 2px;
+}
+
+.legs {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.leg {
+  display: grid;
+  grid-template-columns: 36px 12px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 0;
+  cursor: pointer;
+  border-radius: 2px;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.leg:hover {
+  background: color-mix(in oklab, var(--o, var(--dim)) 10%, transparent);
+}
+
+.transfer {
+  cursor: default;
+}
+
+.times {
+  color: var(--dim);
+  text-align: right;
+  padding-top: 1px;
+  font-size: 10px;
+}
+
+.times s {
+  text-decoration: none;
+  display: block;
+  opacity: 0.55;
+}
+
+.rail {
+  position: relative;
+  align-self: stretch;
+}
+
+.rail::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--o, var(--dimmer));
+  opacity: 0.6;
+}
+
+.rail i {
+  position: absolute;
+  left: 1px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--o, var(--dimmer));
+  background: var(--panel);
+}
+
+.transfer .rail::before {
+  background: repeating-linear-gradient(180deg, var(--dimmer) 0 3px, transparent 3px 6px);
+  opacity: 0.95;
+}
+
+.transfer .rail i {
+  border-color: var(--dimmer);
+  border-style: dashed;
+}
+
+.info b {
+  font-weight: 500;
+  display: block;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info span {
+  color: var(--dimmer);
+  font-size: 9.5px;
+  display: block;
+}
+
+.info .platform {
+  color: var(--dim);
+}
+
+.info .platform u {
+  text-decoration: none;
+  color: var(--fg);
+  border: 1px solid var(--line2);
+  border-radius: 2px;
+  padding: 0 3px;
+  margin: 0 1px;
+}
+
+.transfer .info b {
+  color: var(--dim);
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.callingPoints {
+  grid-column: 3;
+  margin: 3px 0 5px;
+  border-left: 1px solid var(--line2);
+  padding-left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.callingPoint {
+  display: grid;
+  grid-template-columns: 32px 32px minmax(0, 1fr) auto;
+  gap: 5px;
+  font: 400 9.5px / 1.4 var(--mono);
+  color: var(--dim);
+}
+
+.callingPoint em {
+  font-style: normal;
+  color: var(--dimmer);
+}
+
+.callingPoint b {
+  color: var(--fg);
+  font-weight: 400;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.callingPoints .callingPoint u {
+  text-decoration: none;
+  color: var(--dim);
+  font-size: 9px;
+}
+
+.empty {
+  padding: 22px 12px;
+  font: 400 10.5px / 1.6 var(--mono);
+  color: var(--dimmer);
+  text-align: center;
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+
+# Yarn Berry (node-modules linker): keep .yarnrc.yml and yarn.lock, ignore state.
+# See https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.pnp.*

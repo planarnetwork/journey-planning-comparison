@@ -1,0 +1,111 @@
+/*
+ * Design tokens, carried over from the original stylesheet. Components read
+ * these via CSS Modules; code that needs a colour value (the map layers) reads
+ * the matching constant in `colors.ts` rather than calling getComputedStyle.
+ */
+:root {
+  --bg: #0b0d10;
+  --panel: #11141a;
+  --panel2: #161b22;
+  --line: #222a34;
+  --line2: #2c3642;
+  --fg: #dbe2ea;
+  --dim: #7d8896;
+  --dimmer: #5a6472;
+  --acc: #8ab4ff;
+  --map-filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.82) contrast(1.05);
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+body[data-theme="light"] {
+  --bg: #eceae5;
+  --panel: #f7f6f3;
+  --panel2: #fffefb;
+  --line: #d6d2ca;
+  --line2: #c2bdb2;
+  --fg: #1b1e22;
+  --dim: #61686f;
+  --dimmer: #8d949b;
+  --acc: #1f5fbf;
+  --map-filter: saturate(0.28) brightness(1.02) contrast(0.95);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 13px / 1.45 var(--sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+}
+
+a {
+  color: var(--acc);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line2);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Layout skeleton and map sizing. These live global because the map-size
+   attribute is set on <body>, exactly as in the original. */
+#app {
+  display: grid;
+  grid-template-rows: 38px 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  min-width: 0;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 288px minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+}
+
+main {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) var(--maph, 300px);
+  min-width: 0;
+  min-height: 0;
+}
+
+body[data-map="lg"] {
+  --maph: 46vh;
+}
+body[data-map="sm"] {
+  --maph: 190px;
+}
+body[data-map="off"] {
+  --maph: 0px;
+}

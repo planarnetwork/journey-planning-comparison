@@ -1,0 +1,53 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.brand {
+  flex: none;
+  font: 600 12px / 1 var(--mono);
+  letter-spacing: 0.14em;
+}
+
+.brand span {
+  color: var(--acc);
+}
+
+.chip {
+  font: 400 10px / 1 var(--mono);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 4px 6px;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.button {
+  flex: none;
+  font: 500 10px / 1 var(--mono);
+  color: var(--dim);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.button:hover {
+  color: var(--fg);
+  border-color: var(--line2);
+}
