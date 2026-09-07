@@ -1,4 +1,5 @@
 import type { FeedStatus } from '../feed/feed';
+import { FEED_URL } from '../feed/source';
 import styles from './FeedLoading.module.css';
 
 const PHASE_LABEL = {
@@ -80,9 +81,9 @@ function Failed({ message }: { message: string }) {
       <div className={styles.phase}>The feed could not be loaded</div>
       <div className={styles.error}>{message}</div>
       <div className={styles.note}>
-        The release is served without CORS headers, so the page reads it through the dev server's
-        proxy. Check that the app is running under <code>yarn dev</code> or{' '}
-        <code>yarn preview</code>.
+        The feed is read from <code>{FEED_URL}</code>, which gb-transit publishes alongside its
+        website. A 404 there means no feed has been published yet. Set <code>VITE_FEED_URL</code> to
+        read one from somewhere else.
       </div>
     </div>
   );
