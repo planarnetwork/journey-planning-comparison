@@ -16,11 +16,12 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@gb-transit/gtfs-loader": "^1.2.0",
     "leaflet": "^1.9.4",
     "raptor-journey-planner": "5.1.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "transfer-pattern-planner": "3.1.0"
+    "transfer-pattern-planner": "3.2.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.8",
