@@ -1,5 +1,6 @@
-import type { PlainJourney, PlainLeg, StopTime } from 'raptor-journey-planner';
-import type { FeedIndex, StationCode, TripMeta } from '../feed/types';
+import type { PlainJourney, PlainLeg, PlainTrip, StopTime } from 'raptor-journey-planner';
+import { titleCase } from '../feed/buildIndex';
+import type { FeedIndex, StationCode, TransferMode, TripMeta } from '../feed/types';
 import { packJourney } from '../journey/pack';
 import { toMinutes } from '../journey/time';
 import type { CallingPoint, Journey, Leg, TrainLeg, TransferLeg } from '../journey/types';
@@ -7,11 +8,6 @@ import type { CallingPoint, Journey, Leg, TrainLeg, TransferLeg } from '../journ
 /** A timetable leg carries the trip it was taken on; a transfer is the same shape without one. */
 const isTimetableLeg = (leg: PlainLeg): leg is Extract<PlainLeg, { trip: unknown }> =>
   'trip' in leg;
-
-/** Every trip named by these journeys, so their operators can be fetched in one go. */
-export const tripIdsOf = (journeys: readonly PlainJourney[]): string[] => [
-  ...new Set(journeys.flatMap((j) => j.legs.filter(isTimetableLeg).map((l) => l.trip.tripId))),
-];
 
 /**
  * Turn a journey as the planner returns it into the one the page draws.
@@ -21,24 +17,20 @@ export const tripIdsOf = (journeys: readonly PlainJourney[]): string[] => [
  * when whatever came before it finished. That is also what makes a leading transfer work, where
  * the journey departs before the first train does because there is a walk to the station first.
  */
-export function toJourney(
-  plain: PlainJourney,
-  index: FeedIndex,
-  meta: (tripId: string) => TripMeta | null,
-): Journey | null {
+export function toJourney(plain: PlainJourney, index: FeedIndex): Journey | null {
   const legs: Leg[] = [];
   let clock = toMinutes(plain.departureTime);
 
   plain.legs.forEach((leg, i) => {
     if (isTimetableLeg(leg)) {
-      const train = trainLeg(leg, index, meta);
+      const train = trainLeg(leg, index);
       legs.push(train);
       clock = train.arr;
       return;
     }
 
     const transfer: TransferLeg = {
-      mode: index.transfers[`${leg.origin}|${leg.destination}`] ?? 'foot',
+      mode: transferMode(leg.mode),
       from: leg.origin,
       to: leg.destination,
       dep: clock,
@@ -52,11 +44,26 @@ export function toJourney(
   return packJourney(legs);
 }
 
-function trainLeg(
-  leg: Extract<PlainLeg, { trip: unknown }>,
-  index: FeedIndex,
-  meta: (tripId: string) => TripMeta | null,
-): TrainLeg {
+/**
+ * Who runs a trip, and under what names.
+ *
+ * The trip carries its own route and names; the index only has to say what that route is called
+ * and who runs it, which is shared between every trip on it.
+ */
+export function describeTrip(index: FeedIndex, trip: PlainTrip): TripMeta {
+  const route = trip.routeId === undefined ? undefined : index.routes[trip.routeId];
+  const toc = route?.toc ?? '';
+
+  return {
+    toc,
+    operator: index.operators[toc] ?? (toc || 'Unknown operator'),
+    headcode: trip.shortName ?? '',
+    headsign: titleCase(trip.headsign ?? ''),
+    route: route?.name ?? '',
+  };
+}
+
+function trainLeg(leg: Extract<PlainLeg, { trip: unknown }>, index: FeedIndex): TrainLeg {
   const times = leg.stopTimes;
   const first = times[0];
   const last = times[times.length - 1];
@@ -73,7 +80,7 @@ function trainLeg(
     platform: index.stops[time.stop]?.platform ?? null,
   }));
 
-  const trip = meta(leg.trip.tripId);
+  const meta = describeTrip(index, leg.trip);
 
   return {
     mode: 'train',
@@ -82,14 +89,29 @@ function trainLeg(
     to: leg.destination,
     dep: toMinutes(first?.departureTime ?? 0),
     arr: toMinutes(last?.arrivalTime ?? 0),
-    toc: trip?.toc ?? '??',
-    operator: trip?.operator ?? 'Unknown operator',
-    headcode: trip?.headcode ?? '',
-    headsign: trip?.headsign ?? '',
-    route: trip?.route ?? '',
+    toc: meta.toc || '??',
+    operator: meta.operator,
+    headcode: meta.headcode,
+    headsign: meta.headsign,
+    route: meta.route,
     stops: runThrough(index, times),
     points,
   };
+}
+
+/**
+ * The feed writes a mode as one or more tags, e.g. `TRANSFER|TUBE`, so the first one that names a
+ * way of travelling wins and a bare `TRANSFER` falls through to walking. `mode` is a feed
+ * extension, so a feed that does not carry it leaves every change a walk.
+ */
+export function transferMode(mode: string | undefined): TransferMode {
+  for (const tag of (mode ?? '').toUpperCase().split('|')) {
+    if (tag === 'TUBE' || tag === 'METRO' || tag === 'TRAM') return 'tube';
+    if (tag === 'BUS') return 'bus';
+    if (tag === 'FERRY') return 'ferry';
+    if (tag === 'WALK') return 'foot';
+  }
+  return 'foot';
 }
 
 const stationOf = (index: FeedIndex, time: StopTime): StationCode =>

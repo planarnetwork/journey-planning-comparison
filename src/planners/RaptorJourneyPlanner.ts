@@ -1,17 +1,12 @@
 import { PlannerClient } from 'raptor-journey-planner';
 import { version } from 'raptor-journey-planner/package.json';
+import { buildIndex } from '../feed/buildIndex';
+import type { FeedIndex } from '../feed/types';
 import { joinJourneys } from '../journey/pack';
 import { toSeconds } from '../journey/time';
 import { isTrainLeg, type Journey } from '../journey/types';
-import { toJourney, tripIdsOf } from './toJourney';
-import type {
-  FeedContext,
-  LoadedFeed,
-  LoadProgress,
-  Planner,
-  PlannerQuery,
-  PlannerRun,
-} from './types';
+import { toJourney } from './toJourney';
+import type { LoadedFeed, LoadProgress, Planner, PlannerQuery, PlannerRun } from './types';
 
 /** Give up rather than search more than this far past the requested departure. */
 const HORIZON_MINUTES = 720;
@@ -32,20 +27,18 @@ export class RaptorJourneyPlanner implements Planner {
   readonly hue = 65;
 
   private client: PlannerClient | undefined;
-  private context: FeedContext | undefined;
 
   async load(
     bytes: ArrayBuffer,
-    context: FeedContext,
     onProgress?: (progress: LoadProgress) => void,
   ): Promise<LoadedFeed> {
     const worker = new Worker(new URL('./raptor.worker.ts', import.meta.url), { type: 'module' });
-    this.client = new PlannerClient(worker);
-    this.context = context;
+    const client = new PlannerClient(worker);
+    this.client = client;
 
     // No date is given, so the timetable covers the whole period the feed does and any date in it
     // can be planned without loading again. It costs about 100MB over a single day.
-    return this.client.load(bytes, {
+    const loaded = await client.load(bytes, {
       onProgress: (progress) =>
         onProgress?.({
           phase: progress.phase,
@@ -55,21 +48,28 @@ export class RaptorJourneyPlanner implements Planner {
           rows: progress.rows,
         }),
     });
+
+    const stops = await client.stops();
+    return {
+      stops: loaded.stops,
+      trips: loaded.trips,
+      index: buildIndex(stops, loaded.routes, loaded.agencies),
+    };
   }
 
-  async plan(query: PlannerQuery): Promise<PlannerRun> {
+  async plan(query: PlannerQuery, feed: FeedIndex): Promise<PlannerRun> {
     if (!query.via) {
-      return this.profile(query.origin, query.dest, query.time, query.num, query);
+      return this.profile(query.origin, query.dest, query.time, query.num, query, feed);
     }
 
     // A via query is two profiles stitched together: find departures to the via point, then the
     // first onward service from each.
-    const first = await this.profile(query.origin, query.via, query.time, query.num, query);
+    const first = await this.profile(query.origin, query.via, query.time, query.num, query, feed);
     const journeys: Journey[] = [];
     let queries = first.queries;
 
     for (const leg of first.journeys) {
-      const onward = await this.profile(query.via, query.dest, leg.arr, 1, query);
+      const onward = await this.profile(query.via, query.dest, leg.arr, 1, query, feed);
       queries += onward.queries;
       const next = onward.journeys[0];
       if (!next) continue;
@@ -95,6 +95,7 @@ export class RaptorJourneyPlanner implements Planner {
     from: number,
     count: number,
     query: PlannerQuery,
+    feed: FeedIndex,
   ): Promise<PlannerRun> {
     const client = this.client;
     if (!client) throw new Error('No feed has been loaded yet');
@@ -107,7 +108,9 @@ export class RaptorJourneyPlanner implements Planner {
       const plain = await client.plan([origin], [dest], query.date, toSeconds(time));
       queries++;
 
-      const found = await this.toJourneys(plain);
+      const found = plain
+        .map((journey) => toJourney(journey, feed))
+        .filter((journey): journey is Journey => journey !== null);
       if (found.length === 0) break;
 
       for (const journey of found) {
@@ -129,20 +132,6 @@ export class RaptorJourneyPlanner implements Planner {
 
     journeys.sort((a, b) => a.dep - b.dep || a.arr - b.arr);
     return { journeys: journeys.slice(0, count), queries };
-  }
-
-  /** Resolve every trip's operator in one request, then build the journeys. */
-  private async toJourneys(plain: Awaited<ReturnType<PlannerClient['plan']>>): Promise<Journey[]> {
-    const context = this.context;
-    if (!context) throw new Error('No feed has been loaded yet');
-
-    const ids = tripIdsOf(plain);
-    const described = await context.reader.describeTrips(ids);
-    const byId = new Map(ids.map((id, i) => [id, described[i] ?? null]));
-
-    return plain
-      .map((journey) => toJourney(journey, context.index, (id) => byId.get(id) ?? null))
-      .filter((journey): journey is Journey => journey !== null);
   }
 }
 

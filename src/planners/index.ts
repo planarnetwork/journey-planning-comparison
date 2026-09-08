@@ -1,3 +1,4 @@
+import type { FeedIndex } from '../feed/types';
 import { RaptorJourneyPlanner } from './RaptorJourneyPlanner';
 import type { Planner, PlannerQuery, PlannerResult } from './types';
 
@@ -19,13 +20,14 @@ export const createPlanners = (): Planner[] => [new RaptorJourneyPlanner()];
 export async function runComparison(
   planners: readonly Planner[],
   query: PlannerQuery,
+  feed: FeedIndex,
 ): Promise<PlannerResult[]> {
   const results: PlannerResult[] = [];
 
   for (const planner of planners) {
     const started = performance.now();
     try {
-      const run = await planner.plan(query);
+      const run = await planner.plan(query, feed);
       results.push({ planner, ms: performance.now() - started, ...run });
     } catch (e) {
       results.push({

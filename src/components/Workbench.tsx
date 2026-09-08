@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { FeedSession } from '../feed/feed';
 import { createStations, StationsProvider } from '../feed/stations';
-import { formatTime, fromDateNumber, parseDate, parseTime, toDateNumber } from '../journey/time';
+import { formatTime, parseDate, parseTime } from '../journey/time';
 import { runComparison } from '../planners';
 import type { PlannerResult } from '../planners/types';
 import { initialQuery, type QueryState, queryReducer, toCode, toCodes } from '../state/query';
@@ -55,13 +55,6 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
       return;
     }
 
-    const { startDate, endDate } = feed.index.feedInfo;
-    const on = toDateNumber(date);
-    if (startDate && endDate && (on < startDate || on > endDate)) {
-      setStatus(`feed covers ${fromDateNumber(startDate)} — ${fromDateNumber(endDate)}`);
-      return;
-    }
-
     const time = parseTime(current.time) ?? 480;
     const via = current.via.trim() ? toCode(current.via, stations.first) : null;
     const avoid = toCodes(current.avoid, stations.first).filter((c) => c !== origin && c !== dest);
@@ -72,16 +65,20 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
     const mine = ++generation.current;
     setStatus('planning…');
 
-    const next = await runComparison(planners, {
-      origin,
-      dest,
-      date,
-      time,
-      via,
-      avoid,
-      num,
-      maxTransfers,
-    });
+    const next = await runComparison(
+      planners,
+      {
+        origin,
+        dest,
+        date,
+        time,
+        via,
+        avoid,
+        num,
+        maxTransfers,
+      },
+      feed.index,
+    );
     if (mine !== generation.current) return;
 
     setResults(next);

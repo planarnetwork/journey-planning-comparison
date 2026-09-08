@@ -1,8 +1,8 @@
 import type { PlainJourney, StopTime } from 'raptor-journey-planner';
 import { describe, expect, it } from 'vitest';
-import type { FeedIndex, TripMeta } from '../feed/types';
+import type { FeedIndex } from '../feed/types';
 import { isTrainLeg } from '../journey/types';
-import { toJourney, tripIdsOf } from './toJourney';
+import { toJourney, transferMode } from './toJourney';
 
 const index: FeedIndex = {
   stations: {
@@ -20,18 +20,8 @@ const index: FeedIndex = {
     '9100TAUNTON': { station: 'TAU', platform: null },
     '9100PLYMTH5': { station: 'PLY', platform: '5' },
   },
+  routes: { GW: { toc: 'GW', name: 'Great Western Railway' } },
   operators: { GW: 'GWR' },
-  transfers: { 'KGX|PAD': 'tube' },
-  trips: 1,
-  feedInfo: {},
-};
-
-const meta: TripMeta = {
-  toc: 'GW',
-  operator: 'GWR',
-  headcode: '1C78',
-  headsign: 'Plymouth',
-  route: 'Great Western Railway',
 };
 
 const at = (stop: string, arrival: number, departure: number, calls = true): StopTime => ({
@@ -44,7 +34,16 @@ const at = (stop: string, arrival: number, departure: number, calls = true): Sto
 
 const hhmm = (h: number, m: number) => h * 3600 + m * 60;
 
-/** 08:48 walk to Paddington, 09:03 train calling at Reading and Plymouth, passing Taunton. */
+const trip = {
+  tripId: 'G14978',
+  serviceId: '6176',
+  stopTimes: [],
+  routeId: 'GW',
+  shortName: '1C78',
+  headsign: 'PLYMOUTH',
+};
+
+/** 08:48 Tube to Paddington, 09:03 train calling at Reading and Plymouth, passing Taunton. */
 const journey: PlainJourney = {
   departureTime: hhmm(8, 48),
   arrivalTime: hhmm(12, 14),
@@ -55,11 +54,12 @@ const journey: PlainJourney = {
       duration: 900,
       startTime: 60,
       endTime: 86340,
+      mode: 'TRANSFER|TUBE',
     },
     {
       origin: 'PAD',
       destination: 'PLY',
-      trip: { tripId: 'G14978', serviceId: '6176', stopTimes: [] },
+      trip,
       stopTimes: [
         at('9100PADTON2', hhmm(9, 3), hhmm(9, 3)),
         at('9100RDNGSTN7', hhmm(9, 26), hhmm(9, 29)),
@@ -70,7 +70,7 @@ const journey: PlainJourney = {
   ],
 };
 
-const build = () => toJourney(journey, index, () => meta);
+const build = () => toJourney(journey, index);
 
 describe('toJourney', () => {
   it('walks the clock forward so a leading transfer is timed', () => {
@@ -84,18 +84,6 @@ describe('toJourney', () => {
     const transfer = result.legs[0]!;
     expect(transfer.dep).toBe(8 * 60 + 48);
     expect(transfer.arr).toBe(9 * 60 + 3);
-  });
-
-  it('takes the transfer mode from the feed', () => {
-    expect(build()!.legs[0]!.mode).toBe('tube');
-  });
-
-  it('falls back to walking for a pair the feed says nothing about', () => {
-    const unknown: PlainJourney = {
-      ...journey,
-      legs: [{ ...journey.legs[0]!, origin: 'RDG', destination: 'TAU' }, journey.legs[1]!],
-    };
-    expect(toJourney(unknown, index, () => meta)!.legs[0]!.mode).toBe('foot');
   });
 
   it('keeps passing points on the line but out of the calling points', () => {
@@ -115,20 +103,35 @@ describe('toJourney', () => {
     expect(train.points[2]).toEqual({ stop: 'PLY', arr: 734, dep: null, platform: '5' });
   });
 
-  it('puts back the operator the planner drops', () => {
+  it('names the operator from the trip and the index between them', () => {
     const train = build()!.legs[1]!;
     if (!isTrainLeg(train)) throw new Error('expected a train leg');
 
-    expect(train).toMatchObject({ toc: 'GW', operator: 'GWR', headcode: '1C78', trip: 'G14978' });
+    expect(train).toMatchObject({
+      toc: 'GW',
+      operator: 'GWR',
+      headcode: '1C78',
+      headsign: 'Plymouth',
+      route: 'Great Western Railway',
+      trip: 'G14978',
+    });
     expect(build()!.tocs).toEqual(['GW']);
   });
 
-  it('says so rather than guessing when a trip is not in the feed', () => {
-    const train = toJourney(journey, index, () => null)!.legs[1]!;
-    if (!isTrainLeg(train)) throw new Error('expected a train leg');
+  it('says so rather than guessing when a trip names no route', () => {
+    const bare: PlainJourney = {
+      ...journey,
+      legs: [
+        journey.legs[0]!,
+        { ...journey.legs[1]!, trip: { tripId: 'X', serviceId: '1', stopTimes: [] } },
+      ],
+    };
 
+    const train = toJourney(bare, index)!.legs[1]!;
+    if (!isTrainLeg(train)) throw new Error('expected a train leg');
     expect(train.operator).toBe('Unknown operator');
     expect(train.headcode).toBe('');
+    expect(train.toc).toBe('??');
   });
 
   it('counts changes between trains, not legs', () => {
@@ -147,7 +150,7 @@ describe('toJourney', () => {
         {
           origin: 'PAD',
           destination: 'RDG',
-          trip: { tripId: 'A', serviceId: '1', stopTimes: [] },
+          trip,
           stopTimes: [
             at('9100PADTON2', hhmm(9, 3), hhmm(9, 3)),
             at('9100RDNGSTN7', hhmm(9, 26), hhmm(9, 26)),
@@ -157,7 +160,7 @@ describe('toJourney', () => {
         {
           origin: 'RDG',
           destination: 'PLY',
-          trip: { tripId: 'B', serviceId: '1', stopTimes: [] },
+          trip,
           stopTimes: [
             at('9100RDNGSTN7', hhmm(9, 40), hhmm(9, 40)),
             at('9100PLYMTH5', hhmm(12, 14), hhmm(12, 14)),
@@ -166,7 +169,7 @@ describe('toJourney', () => {
       ],
     };
 
-    const result = toJourney(withChange, index, () => meta)!;
+    const result = toJourney(withChange, index)!;
     const change = result.legs[1]!;
 
     // The walk across Reading starts when the first train gets in, not when the second leaves.
@@ -187,7 +190,7 @@ describe('toJourney', () => {
       ],
     };
 
-    const train = toJourney(elsewhere, index, () => meta)!.legs[1]!;
+    const train = toJourney(elsewhere, index)!.legs[1]!;
     if (!isTrainLeg(train)) throw new Error('expected a train leg');
     expect(train.stops).toEqual(['9999UNKNOWN', 'PLY']);
   });
@@ -198,16 +201,27 @@ describe('toJourney', () => {
       arrivalTime: 900,
       legs: [journey.legs[0]!],
     };
-    expect(toJourney(walkOnly, index, () => meta)).toBeNull();
+    expect(toJourney(walkOnly, index)).toBeNull();
   });
 });
 
-describe('tripIdsOf', () => {
-  it('names each trip once, however many journeys use it', () => {
-    expect(tripIdsOf([journey, journey])).toEqual(['G14978']);
+describe('transferMode', () => {
+  it('takes the travelling tag out of a compound mode', () => {
+    expect(transferMode('TRANSFER|TUBE')).toBe('tube');
+    expect(transferMode('METRO|WALK')).toBe('tube');
+    expect(build()!.legs[0]!.mode).toBe('tube');
   });
 
-  it('ignores transfers, which are on no trip', () => {
-    expect(tripIdsOf([{ ...journey, legs: [journey.legs[0]!] }])).toEqual([]);
+  it('maps each way of travelling the feed names', () => {
+    expect(transferMode('WALK')).toBe('foot');
+    expect(transferMode('BUS')).toBe('bus');
+    expect(transferMode('FERRY')).toBe('ferry');
+    expect(transferMode('TRAM')).toBe('tube');
+  });
+
+  it('walks when the feed says nothing, or says only that it is a transfer', () => {
+    expect(transferMode(undefined)).toBe('foot');
+    expect(transferMode('')).toBe('foot');
+    expect(transferMode('TRANSFER')).toBe('foot');
   });
 });

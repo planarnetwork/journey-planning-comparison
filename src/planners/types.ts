@@ -1,12 +1,5 @@
-import type { FeedReader } from '../feed/FeedReader';
 import type { FeedIndex, StationCode } from '../feed/types';
 import type { Journey } from '../journey/types';
-
-/** What a planner is given once, so it can name the places and operators it plans between. */
-export interface FeedContext {
-  index: FeedIndex;
-  reader: FeedReader;
-}
 
 export interface LoadProgress {
   phase: 'downloading' | 'reading' | 'building';
@@ -21,6 +14,8 @@ export interface LoadedFeed {
   /** Stations the planner will plan between. */
   stops: number;
   trips: number;
+  /** The feed as this planner read it, for naming places and operators. */
+  index: FeedIndex;
 }
 
 export interface PlannerQuery {
@@ -59,13 +54,15 @@ export interface Planner {
   /** OKLCH hue used for this planner's accents. */
   readonly hue: number;
 
-  load(
-    bytes: ArrayBuffer,
-    context: FeedContext,
-    onProgress?: (progress: LoadProgress) => void,
-  ): Promise<LoadedFeed>;
+  /**
+   * Take the feed's bytes and build whatever this planner scans, describing what it read.
+   *
+   * The bytes are passed rather than a url so that a comparison of several planners downloads the
+   * feed once and posts a copy to each.
+   */
+  load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<LoadedFeed>;
 
-  plan(query: PlannerQuery): Promise<PlannerRun>;
+  plan(query: PlannerQuery, feed: FeedIndex): Promise<PlannerRun>;
 
   terminate(): void;
 }

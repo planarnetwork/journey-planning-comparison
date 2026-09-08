@@ -1,12 +1,10 @@
 import { createPlanners } from '../planners';
 import type { LoadedFeed, LoadProgress, Planner } from '../planners/types';
-import { createFeedReader, type FeedReader } from './FeedReader';
 import { downloadFeed, FEED_URL } from './source';
 import type { FeedIndex } from './types';
 
 export interface FeedSession {
   index: FeedIndex;
-  reader: FeedReader;
   planners: readonly Planner[];
   loaded: LoadedFeed;
 }
@@ -22,9 +20,9 @@ type Listener = (status: FeedStatus) => void;
 /**
  * The feed is loaded once for the life of the page, not once per component.
  *
- * It is 21MB over the wire and about half a gigabyte of objects by the time both workers have
- * built what they build, so this is a module-level singleton rather than component state: a second
- * caller joins the load already running instead of starting another. That also makes it survive
+ * It is 21MB over the wire and about half a gigabyte of objects by the time the planner has built
+ * its timetable, so this is a module-level singleton rather than component state: a second caller
+ * joins the load already running instead of starting another. That also makes it survive
  * StrictMode mounting everything twice in development.
  */
 let session: Promise<FeedSession> | undefined;
@@ -58,6 +56,8 @@ export function openFeed(url: string = FEED_URL): Promise<FeedSession> {
 async function load(url: string): Promise<FeedSession> {
   publish({ state: 'loading', progress: { phase: 'downloading', bytesRead: 0, rows: 0 } });
 
+  // Fetched here rather than by each worker so that a comparison of several planners downloads the
+  // feed once and posts a copy to each.
   const bytes = await downloadFeed(url, (bytesRead, bytesTotal) => {
     publish({
       state: 'loading',
@@ -65,29 +65,20 @@ async function load(url: string): Promise<FeedSession> {
     });
   });
 
-  // The reader goes first and takes about a second, so the station list is answering while the
-  // planner is still building a timetable out of the same bytes.
-  const reader = createFeedReader();
-  publish({
-    state: 'loading',
-    progress: {
-      phase: 'reading',
-      bytesRead: bytes.byteLength,
-      bytesTotal: bytes.byteLength,
-      rows: 0,
-    },
-  });
-  const index = await reader.load(bytes);
-
   const planners = createPlanners();
-  let loaded: LoadedFeed = { stops: index.codes.length, trips: index.trips };
-  for (const planner of planners) {
-    loaded = await planner.load(bytes, { index, reader }, (progress) => {
-      publish({ state: 'loading', progress });
-    });
-  }
+  const [first, ...rest] = planners;
+  if (!first) throw new Error('There are no planners to compare');
 
-  const ready: FeedSession = { index, reader, planners, loaded };
+  const report = (progress: LoadProgress) => {
+    publish({ state: 'loading', progress });
+  };
+
+  // Every planner reads the same feed, so they all describe it the same way; the first to finish
+  // is the one the page is named from.
+  const loaded = await first.load(bytes, report);
+  for (const planner of rest) await planner.load(bytes, report);
+
+  const ready: FeedSession = { index: loaded.index, planners, loaded };
   publish({ state: 'ready', session: ready });
   return ready;
 }

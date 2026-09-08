@@ -1,5 +1,4 @@
 import type { FeedIndex } from '../feed/types';
-import { fromDateNumber } from '../journey/time';
 import type { Planner } from '../planners/types';
 
 export interface QueryState {
@@ -22,15 +21,15 @@ export interface QuerySeed {
 /**
  * The query the workbench opens on.
  *
- * The date is the first day the feed covers rather than today's: a feed is published for a window,
- * and planning outside it throws rather than quietly finding nothing.
+ * Today, which a current feed covers. The period a feed is published for does not cross the worker
+ * boundary, so rather than guess at it, a date outside it is left to the planner, which refuses it
+ * and says what it does cover.
  */
 export function initialQuery({ index, planners }: QuerySeed): QueryState {
-  const start = index.feedInfo.startDate;
   return {
     origin: label(index, 'KGX') ?? '',
     dest: label(index, 'PLY') ?? '',
-    date: start ? fromDateNumber(start) : new Date().toISOString().slice(0, 10),
+    date: new Date().toISOString().slice(0, 10),
     time: '08:00',
     via: '',
     avoid: '',

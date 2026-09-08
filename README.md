@@ -2,9 +2,9 @@
 
 A workbench for comparing journey-planning packages against a real timetable, in the browser.
 
-The feed is [planarnetwork/dtd2mysql]'s GTFS export of Great Britain's rail timetable — 21MB
-compressed, 290,000 trips, 3,060 stations. It is downloaded, parsed and planned entirely on the
-page; nothing is sent anywhere. Loading takes about five seconds on a warm connection.
+The feed is [gb-transit]'s GTFS export of Great Britain's rail timetable — 21MB compressed,
+~294,000 trips, 3,060 stations. It is downloaded, parsed and planned entirely on the page; nothing
+is sent anywhere. Loading takes about five seconds on a warm connection.
 
 ## Running it
 
@@ -50,16 +50,23 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
 
 Set `VITE_FEED_URL` to work against a feed that is not the current one.
 
-The bytes are fetched once and handed to two workers:
+The bytes are fetched on the main thread and posted to each planner's worker, so a comparison of
+several planners downloads the feed once. The planner is loaded without a date, so any day in the
+feed's published window plans without loading again — about 100MB more than a single day would
+cost, and worth it.
 
-- **the planner's**, which builds the timetable it scans. It is loaded without a date, so any day in
-  the feed's published window plans without loading again — about 100MB more than a single day
-  would cost, and worth it.
-- **`src/feed/meta.worker.ts`**, which reads what the planner discards. `loadGTFS` keeps only
-  `trip_id` and `service_id` from trips.txt and never opens routes.txt or agency.txt, so a journey
-  comes back knowing which trip it is on and nothing about who runs it. This reads the operator,
-  headcode, headsign and transfer modes from the same bytes, skipping stop_times.txt — 194MB
-  uncompressed — without inflating it. The trips stay in the worker and are asked for by id.
+Everything a journey needs comes back from that one worker. Up to raptor 5.1.0 it did not: the
+loader kept only `trip_id` and `service_id` from trips.txt and never opened routes.txt or
+agency.txt, so a journey knew which trip it was on and nothing about who ran it, and this app read
+the zip a second time in a worker of its own to put that back. `@gb-transit/gtfs-loader` 1.2.0 and
+raptor 5.1.0 carry the route, operator, headcode, headsign and transfer mode through to a planned
+journey, and that second worker is gone.
+
+`src/feed/buildIndex.ts` is what remains of it: it turns the planner's stops, routes and agencies
+into the station and operator names the page shows. It re-derives which station a platform belongs
+to by walking `parentStation`, because the planner works that out to build its timetable but does
+not hand the map across the worker boundary. That is a few thousand stops, not a few hundred
+thousand trips.
 
 ## What the comparison does not show
 
@@ -72,4 +79,8 @@ Two constraints are applied to results rather than to the search, because the pa
 a station to avoid, and a maximum number of changes. Interchange time comes from the feed, per
 station, so there is no control for it.
 
-[planarnetwork/dtd2mysql]: https://github.com/planarnetwork/dtd2mysql
+The period a feed covers does not cross the worker boundary either, so the workbench opens on
+today's date rather than the first day of the feed, and a date outside the feed is left to the
+planner to refuse — which it does, naming the period it does cover.
+
+[gb-transit]: https://github.com/planarnetwork/gb-transit

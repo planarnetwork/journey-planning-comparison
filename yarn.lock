@@ -283,20 +283,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@gb-transit/gtfs-loader@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@gb-transit/gtfs-loader@npm:1.1.0"
+"@gb-transit/gtfs-loader@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "@gb-transit/gtfs-loader@npm:1.2.0"
   dependencies:
-    "@gb-transit/gtfs-schema": "npm:^2.0.0"
+    "@gb-transit/gtfs-schema": "npm:^2.1.0"
     fflate: "npm:^0.8.3"
-  checksum: 10c0/b888725189d452c8f5abe530a80776299c10b5ecbd4e9b5c7f042699c793ef0725c05f72d4f2b4b51888d688e82bc8c8078a55f003b3aa749938aaeb52ab58de
+  checksum: 10c0/b81dbcef40160f5debf0f9db6df2614710f08434a024964a5c496e141da75befc51bdd64021df1674945ecf8146622d4924becfe088a351ad19b29d1dcb85455
   languageName: node
   linkType: hard
 
-"@gb-transit/gtfs-schema@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@gb-transit/gtfs-schema@npm:2.0.0"
-  checksum: 10c0/d752b1301c0adbbcc0c50ce682dec961c907fd207dcf82d53056b524d15e117b46f085b28bedbe635d807f287a846742ad4585967091135dd7d97f95c6ad4c54
+"@gb-transit/gtfs-schema@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "@gb-transit/gtfs-schema@npm:2.1.0"
+  dependencies:
+    temporal-polyfill: "npm:1.0.4"
+  checksum: 10c0/ecadfc3f62e918a6c3d24b895c27bb0b342b8e44ba20213396f3a53eb059ad2a20ad3616037f6ef90de2966fa63fceaed1bd634fe6b44fa5c33230565a44b15a
   languageName: node
   linkType: hard
 
@@ -1540,10 +1542,9 @@ __metadata:
     "@types/react-dom": "npm:^19.2.4"
     "@vitejs/plugin-react": "npm:^6.0.5"
     "@vitest/coverage-v8": "npm:^4.1.10"
-    fflate: "npm:^0.8.3"
     jsdom: "npm:^30.0.1"
     leaflet: "npm:^1.9.4"
-    raptor-journey-planner: "npm:5.0.0"
+    raptor-journey-planner: "npm:5.1.0"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
     typescript: "npm:^7.0.2"
@@ -1552,12 +1553,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"raptor-journey-planner@npm:5.0.0":
-  version: 5.0.0
-  resolution: "raptor-journey-planner@npm:5.0.0"
+"raptor-journey-planner@npm:5.1.0":
+  version: 5.1.0
+  resolution: "raptor-journey-planner@npm:5.1.0"
   dependencies:
-    "@gb-transit/gtfs-loader": "npm:^1.1.0"
-  checksum: 10c0/e7d98c325b1ff27792d56cd6c95395a350fe8096b9d9d8ac2751aa1740b926ad2524112c2a1f4eec5f9d2b5f8ff19774a46cca37f1e61065e0223487d5492d07
+    "@gb-transit/gtfs-loader": "npm:^1.2.0"
+  checksum: 10c0/743cae49c866bab4091043e339bafbb6d3984a2f4b9a1acc85db95a71b08c2f1e9d3351a0e28f9d5ac2b02f779c028c0979b364148b3a82b1b95744f55e79591
   languageName: node
   linkType: hard
 
@@ -1746,6 +1747,30 @@ __metadata:
     minizlib: "npm:^3.1.0"
     yallist: "npm:^5.0.0"
   checksum: 10c0/1311f6be85a8157ac4c9147bae43e13923d2a1aae15e4aa1bd5239e4e03d2cf53cfe103dde7f35832fbb4c938b042856bc8e9a0afd29abd05e2d1608788c4fea
+  languageName: node
+  linkType: hard
+
+"temporal-polyfill@npm:1.0.4":
+  version: 1.0.4
+  resolution: "temporal-polyfill@npm:1.0.4"
+  dependencies:
+    temporal-spec: "npm:1.0.1"
+    temporal-utils: "npm:1.0.2"
+  checksum: 10c0/b93905805462090e94069841bfa99d162aaec07766a2fa4a8aed28159e3c3296c03a3224b5c6ea14cc65890f299094b21d1702ee6d3cd15cdaae967c22809b33
+  languageName: node
+  linkType: hard
+
+"temporal-spec@npm:1.0.1":
+  version: 1.0.1
+  resolution: "temporal-spec@npm:1.0.1"
+  checksum: 10c0/99f6bfe4a8e59cd0664d0e97706798a1e10d42b1b682da9b60778a4cb9a23362da01ea3d83a674ef426ed743bbab835e2e3d1acea5d2d4a9eabe33863237b014
+  languageName: node
+  linkType: hard
+
+"temporal-utils@npm:1.0.2":
+  version: 1.0.2
+  resolution: "temporal-utils@npm:1.0.2"
+  checksum: 10c0/062cacb33662e4e2547e1ebea98e994d3835d98bf528744256714cd0c4219d43ffd526a500bbce12392468f802a01de058885e8d73453c11ed7ca67fa6e327fb
   languageName: node
   linkType: hard
 

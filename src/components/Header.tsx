@@ -1,5 +1,4 @@
 import type { FeedSession } from '../feed/feed';
-import { fromDateNumber } from '../journey/time';
 import type { MapSize, Theme } from '../types';
 import styles from './Header.module.css';
 
@@ -14,15 +13,12 @@ interface HeaderProps {
 
 export function Header({ feed, status, mapSize, theme, onCycleMap, onToggleTheme }: HeaderProps) {
   const { index, loaded } = feed;
-  const { startDate, endDate, version } = index.feedInfo;
 
   const summary = `GB rail · ${index.codes.length} stn · ${loaded.trips.toLocaleString()} trips`;
   const detail = [
-    `dtd2mysql GTFS${version ? ` ${version}` : ''}`,
-    `${index.codes.length} stations, ${loaded.trips.toLocaleString()} trips, ${Object.keys(index.operators).length} operators`,
-    startDate && endDate
-      ? `covers ${fromDateNumber(startDate)} to ${fromDateNumber(endDate)}`
-      : 'no published date range',
+    'gb-transit GTFS',
+    `${index.codes.length} stations, ${loaded.trips.toLocaleString()} trips`,
+    `${Object.keys(index.routes).length} routes, ${Object.keys(index.operators).length} operators`,
   ].join(' — ');
 
   return (
