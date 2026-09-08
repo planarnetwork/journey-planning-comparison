@@ -14,8 +14,13 @@ export interface LoadedFeed {
   /** Stations the planner will plan between. */
   stops: number;
   trips: number;
-  /** The feed as this planner read it, for naming places and operators. */
-  index: FeedIndex;
+  /**
+   * The feed as this planner read it, for naming places and operators.
+   *
+   * Left out by a planner that would only be building a second copy of what another already
+   * describes — every planner here reads the same feed, so one of them saying so is enough.
+   */
+  index?: FeedIndex | undefined;
 }
 
 export interface PlannerQuery {

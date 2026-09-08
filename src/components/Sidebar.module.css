@@ -214,3 +214,30 @@
   color: var(--dimmer);
   text-align: center;
 }
+
+/* A planner that could not read the feed. Listed rather than hidden, so its absence from the
+   comparison is accounted for, but not selectable. */
+.unavailable {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+  opacity: 0.55;
+  cursor: help;
+}
+
+.unavailable b {
+  display: block;
+  font: 500 11px / 1.3 var(--mono);
+  color: var(--dim);
+}
+
+.unavailable i {
+  display: block;
+  font: 400 10px / 1.3 var(--sans);
+  font-style: normal;
+  color: var(--dimmer);
+}

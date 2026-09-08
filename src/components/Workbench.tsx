@@ -148,7 +148,13 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
           onToggleTheme={onToggleTheme}
         />
         <div className="shell">
-          <Sidebar query={query} planners={feed.planners} dispatch={dispatch} onRun={run} />
+          <Sidebar
+            query={query}
+            planners={feed.planners}
+            unavailable={feed.unavailable}
+            dispatch={dispatch}
+            onRun={run}
+          />
           <main>
             <Columns
               results={results}

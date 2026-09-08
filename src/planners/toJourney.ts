@@ -1,16 +1,55 @@
-import type { PlainJourney, PlainLeg, PlainTrip, StopTime } from 'raptor-journey-planner';
+import type { StopTime } from 'raptor-journey-planner';
 import { titleCase } from '../feed/buildIndex';
 import type { FeedIndex, StationCode, TransferMode, TripMeta } from '../feed/types';
 import { packJourney } from '../journey/pack';
 import { toMinutes } from '../journey/time';
 import type { CallingPoint, Journey, Leg, TrainLeg, TransferLeg } from '../journey/types';
 
+/**
+ * A journey as a planner's worker posts it back.
+ *
+ * Both packages under comparison read the same feed with the same loader and return the same shape,
+ * so this is written structurally rather than taken from either of them: a trip, less the Service
+ * it carries, which is a class and would arrive with its fields and without its methods.
+ */
+export interface PlainTrip {
+  tripId: string;
+  routeId?: string | undefined;
+  shortName?: string | undefined;
+  headsign?: string | undefined;
+  stopTimes: StopTime[];
+}
+
+export interface PlainTimetableLeg {
+  origin: StationCode;
+  destination: StationCode;
+  stopTimes: StopTime[];
+  trip: PlainTrip;
+}
+
+export interface PlainTransfer {
+  origin: StationCode;
+  destination: StationCode;
+  duration: number;
+  startTime: number;
+  endTime: number;
+  /** The feed's own transfer mode, where the package carries it through. */
+  mode?: string | undefined;
+}
+
+export type PlainLeg = PlainTimetableLeg | PlainTransfer;
+
+export interface PlainJourney {
+  legs: PlainLeg[];
+  departureTime: number;
+  arrivalTime: number;
+}
+
 /** A timetable leg carries the trip it was taken on; a transfer is the same shape without one. */
-const isTimetableLeg = (leg: PlainLeg): leg is Extract<PlainLeg, { trip: unknown }> =>
-  'trip' in leg;
+const isTimetableLeg = (leg: PlainLeg): leg is PlainTimetableLeg => 'trip' in leg;
 
 /**
- * Turn a journey as the planner returns it into the one the page draws.
+ * Turn a journey as a planner returns it into the one the page draws.
  *
  * A transfer says how long it takes and between which times it is available, but not when it was
  * actually made, so the legs are walked forward from the journey's departure: a transfer starts
@@ -63,7 +102,7 @@ export function describeTrip(index: FeedIndex, trip: PlainTrip): TripMeta {
   };
 }
 
-function trainLeg(leg: Extract<PlainLeg, { trip: unknown }>, index: FeedIndex): TrainLeg {
+function trainLeg(leg: PlainTimetableLeg, index: FeedIndex): TrainLeg {
   const times = leg.stopTimes;
   const first = times[0];
   const last = times[times.length - 1];
@@ -102,7 +141,7 @@ function trainLeg(leg: Extract<PlainLeg, { trip: unknown }>, index: FeedIndex): 
 /**
  * The feed writes a mode as one or more tags, e.g. `TRANSFER|TUBE`, so the first one that names a
  * way of travelling wins and a bare `TRANSFER` falls through to walking. `mode` is a feed
- * extension, so a feed that does not carry it leaves every change a walk.
+ * extension, so a feed — or a package — that does not carry it leaves every change a walk.
  */
 export function transferMode(mode: string | undefined): TransferMode {
   for (const tag of (mode ?? '').toUpperCase().split('|')) {

@@ -1,3 +1,4 @@
+import type { UnavailablePlanner } from '../feed/feed';
 import type { Planner } from '../planners/types';
 import type { QueryAction, QueryState } from '../state/query';
 import { plannerColor } from '../theme/colors';
@@ -7,11 +8,13 @@ import { StationInput } from './StationInput';
 interface SidebarProps {
   query: QueryState;
   planners: readonly Planner[];
+  /** Planners that could not read the feed, shown so their absence is not a mystery. */
+  unavailable: readonly UnavailablePlanner[];
   dispatch: (action: QueryAction) => void;
   onRun: () => void;
 }
 
-export function Sidebar({ query, planners, dispatch, onRun }: SidebarProps) {
+export function Sidebar({ query, planners, unavailable, dispatch, onRun }: SidebarProps) {
   const set = (field: keyof QueryState) => (value: string | number) =>
     dispatch({ type: 'set', field, value });
 
@@ -99,6 +102,15 @@ export function Sidebar({ query, planners, dispatch, onRun }: SidebarProps) {
               </button>
             );
           })}
+          {unavailable.map(({ planner, message }) => (
+            <div key={planner.id} className={styles.unavailable} title={message}>
+              <span className={styles.swatch} />
+              <span>
+                <b>{planner.name}</b>
+                <i>{planner.sub} — could not load</i>
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 

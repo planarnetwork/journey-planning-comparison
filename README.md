@@ -15,9 +15,15 @@ yarn dev
 
 ## Planners
 
-| Planner | Package |
-| --- | --- |
-| RAPTOR | [`raptor-journey-planner`](https://github.com/planarnetwork/raptor) |
+| Planner | Package | |
+| --- | --- | --- |
+| RAPTOR | [`raptor-journey-planner`](https://github.com/planarnetwork/raptor) | round-based search of the timetable |
+| Transfer patterns, eager | [`transfer-pattern-planner`](https://github.com/planarnetwork/transfer-pattern-planner) | holds the whole pattern set |
+| Transfer patterns, lazy | the same | fetches a station's patterns when a query asks |
+
+The two transfer-pattern planners run the same algorithm over the same patterns and differ only in
+when those are fetched. That is the comparison: the whole set is 33MB and 34 million patterns held
+in memory, against 32KB for the one station a query departs from.
 
 Another one plugs in by implementing `Planner` in `src/planners/types.ts` and being added to
 `createPlanners()` in `src/planners/index.ts`. Each holds its own worker and its own copy of the
@@ -48,7 +54,17 @@ from origin 'https://planarnetwork.github.io' has been blocked by CORS policy:
 No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ```
 
-Set `VITE_FEED_URL` to work against a feed that is not the current one.
+The transfer patterns are published beside the feed, as one file for the eager planner and a
+directory of one file per station for the lazy one. `VITE_FEED_URL`, `VITE_PATTERN_FILE_URL` and
+`VITE_PATTERN_DIRECTORY_URL` point any of them somewhere else.
+
+**Neither transfer-pattern planner works in a browser yet.** The patterns are brotli compressed and
+`transfer-pattern-planner` 3.1.0 reads them with `DecompressionStream("brotli")`, which no browser
+has — Chrome 152 answers `Unsupported compression format: 'brotli'`. Its documented way round that,
+serving the file with `Content-Encoding: br`, does not help either: the browser decodes the body but
+strips the header, so the package cannot tell it has already been decoded and decompresses it again.
+Both are left listed in the sidebar as unavailable, with the reason, and the comparison runs without
+them.
 
 The bytes are fetched on the main thread and posted to each planner's worker, so a comparison of
 several planners downloads the feed once. The planner is loaded without a date, so any day in the

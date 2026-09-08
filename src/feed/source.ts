@@ -16,6 +16,23 @@ export const FEED_URL =
   import.meta.env.VITE_FEED_URL ?? 'https://planarnetwork.github.io/gb-transit/gtfs.zip';
 
 /**
+ * The transfer patterns built from that feed, published beside it.
+ *
+ * Two shapes of the same thing. The whole set is one brotli file of tens of megabytes, which the
+ * eager planner reads in full; the directory holds one file per station, which the lazy planner
+ * fetches as a query asks for one — about three times the bytes in total, none of it read until
+ * it is wanted.
+ */
+export const PATTERN_FILE_URL =
+  import.meta.env.VITE_PATTERN_FILE_URL ??
+  'https://planarnetwork.github.io/gb-transit/transfer-patterns.br';
+
+/** Must end in a slash, or the last segment reads as a filename and is replaced. */
+export const PATTERN_DIRECTORY_URL =
+  import.meta.env.VITE_PATTERN_DIRECTORY_URL ??
+  'https://planarnetwork.github.io/gb-transit/transfer-patterns/';
+
+/**
  * Fetch the feed, reporting as it arrives.
  *
  * The bytes are collected rather than streamed on, because two workers each want a copy of them:

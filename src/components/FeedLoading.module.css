@@ -83,3 +83,59 @@
   font: 400 12px / 1.6 var(--mono);
   white-space: pre-wrap;
 }
+
+/* One row per planner, each building its own timetable from the same bytes. */
+.planners {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.planner {
+  display: grid;
+  grid-template-columns: 8px auto 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  font: 400 11px / 1.4 var(--mono);
+  color: var(--dimmer);
+}
+
+.plannerDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--h);
+  opacity: 0.35;
+  align-self: center;
+}
+
+.plannerDone .plannerDot {
+  opacity: 1;
+}
+
+.planner b {
+  font-weight: 500;
+  color: var(--dim);
+}
+
+.plannerDone b {
+  color: var(--fg);
+}
+
+.planner i {
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plannerState {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.plannerDone .plannerState {
+  color: var(--acc);
+}
