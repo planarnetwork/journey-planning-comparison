@@ -187,6 +187,62 @@
   color: var(--dimmer);
 }
 
+/* One row per planner that can be given workers: its name, and the counts to give it. */
+.threads {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.threads:last-of-type {
+  margin-bottom: 0;
+}
+
+.threadName {
+  font: 500 9px / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+}
+
+.choices {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.choice {
+  min-width: 26px;
+  padding: 5px 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--dim);
+  font: 400 11px / 1 var(--mono);
+  cursor: pointer;
+}
+
+.choice:first-child {
+  border-left: 0;
+}
+
+.choice:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.choiceOn {
+  background: var(--acc);
+  color: var(--bg);
+}
+
+.choice:disabled {
+  cursor: progress;
+  opacity: 0.5;
+}
+
 .run {
   padding: 12px;
 }

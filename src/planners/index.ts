@@ -2,7 +2,7 @@ import { PATTERN_DIRECTORY_URL, PATTERN_FILE_URL } from '../feed/source';
 import type { FeedIndex } from '../feed/types';
 import { RaptorJourneyPlanner } from './RaptorJourneyPlanner';
 import { TransferPatternPlanner } from './TransferPatternPlanner';
-import type { Planner, PlannerQuery, PlannerResult } from './types';
+import type { Planner, PlannerQuery, PlannerResult, Threaded } from './types';
 
 /**
  * Every planner under comparison.
@@ -31,6 +31,27 @@ export const createPlanners = (): Planner[] => [
     patterns: { kind: 'lazy', base: PATTERN_DIRECTORY_URL },
   }),
 ];
+
+export const isThreaded = (planner: Planner): planner is Planner & Threaded =>
+  'setThreads' in planner;
+
+/**
+ * Thread counts the workbench offers, before the machine's core count trims them.
+ *
+ * Powers of two rather than every number: the point is to see whether spreading the searches does
+ * anything at all, and a worker costs a timetable, so the interesting steps are far apart.
+ */
+export const THREAD_CHOICES = [1, 2, 4, 8] as const;
+
+/**
+ * The counts worth offering on this machine.
+ *
+ * More workers than cores would be threads taking turns on the same core, which is slower than
+ * asking for fewer and says nothing about the algorithm.
+ */
+export function threadChoices(cores = navigator.hardwareConcurrency || 1): number[] {
+  return THREAD_CHOICES.filter((count) => count === 1 || count <= cores);
+}
 
 /**
  * Put the same question to every planner and time each answer.

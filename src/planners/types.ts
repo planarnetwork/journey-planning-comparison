@@ -72,6 +72,26 @@ export interface Planner {
   terminate(): void;
 }
 
+/**
+ * A planner that can be given more than one worker to scan on.
+ *
+ * Not every planner can: a pool spreads several searches, so it is worth having where an answer is
+ * several independent searches and worth nothing where it is one. Declared apart from Planner so
+ * the workbench offers the control to whoever has it rather than to everyone.
+ */
+export interface Threaded {
+  /** Workers this planner is scanning on now. */
+  readonly threads: number;
+
+  /**
+   * Rebuild on `count` workers, reporting progress as the feed is read into each of them.
+   *
+   * This costs what the first load did — a worker holds its own timetable and has to build it —
+   * so it is a deliberate act, not something to do between queries.
+   */
+  setThreads(count: number, onProgress?: (progress: LoadProgress) => void): Promise<void>;
+}
+
 /** A planner's answer to one comparison, with the wall clock it took. */
 export interface PlannerResult {
   planner: Planner;

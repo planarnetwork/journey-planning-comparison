@@ -1,5 +1,5 @@
 import type { UnavailablePlanner } from '../feed/feed';
-import type { Planner } from '../planners/types';
+import type { Planner, Threaded } from '../planners/types';
 import type { QueryAction, QueryState } from '../state/query';
 import { plannerColor } from '../theme/colors';
 import styles from './Sidebar.module.css';
@@ -10,11 +10,30 @@ interface SidebarProps {
   planners: readonly Planner[];
   /** Planners that could not read the feed, shown so their absence is not a mystery. */
   unavailable: readonly UnavailablePlanner[];
+  /** Planners that can be given more than one worker, with the count each is on. */
+  threaded: readonly (Planner & Threaded)[];
+  threads: ReadonlyMap<string, number>;
+  /** Counts this machine has the cores for. */
+  choices: readonly number[];
+  /** A planner is rebuilding its workers, so nothing can be asked of it yet. */
+  rebuilding: boolean;
   dispatch: (action: QueryAction) => void;
   onRun: () => void;
+  onThreads: (planner: Planner & Threaded, count: number) => void;
 }
 
-export function Sidebar({ query, planners, unavailable, dispatch, onRun }: SidebarProps) {
+export function Sidebar({
+  query,
+  planners,
+  unavailable,
+  threaded,
+  threads,
+  choices,
+  rebuilding,
+  dispatch,
+  onRun,
+  onThreads,
+}: SidebarProps) {
   const set = (field: keyof QueryState) => (value: string | number) =>
     dispatch({ type: 'set', field, value });
 
@@ -113,6 +132,41 @@ export function Sidebar({ query, planners, unavailable, dispatch, onRun }: Sideb
           ))}
         </div>
       </div>
+
+      {threaded.length > 0 && choices.length > 1 && (
+        <div className={styles.section}>
+          <span className={styles.sectionLabel}>Threads</span>
+          {threaded.map((planner) => {
+            const on = threads.get(planner.id) ?? planner.threads;
+            return (
+              <div key={planner.id} className={styles.threads}>
+                <span className={styles.threadName}>{planner.name}</span>
+                <div className={styles.choices}>
+                  {choices.map((count) => (
+                    <button
+                      type="button"
+                      key={count}
+                      className={
+                        count === on ? `${styles.choice} ${styles.choiceOn}` : styles.choice
+                      }
+                      disabled={rebuilding}
+                      onClick={() => onThreads(planner, count)}
+                      title={`Scan on ${count} worker${count === 1 ? '' : 's'}`}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <div className={styles.hint}>
+            {rebuilding
+              ? 'rebuilding — each worker reads the feed again'
+              : 'A worker holds a timetable of its own. Only searches that do not wait on each other — a via query’s onward legs — are spread over them.'}
+          </div>
+        </div>
+      )}
 
       <div className={styles.section}>
         <span className={styles.sectionLabel}>Constraints</span>

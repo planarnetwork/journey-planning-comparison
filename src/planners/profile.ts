@@ -36,18 +36,28 @@ export async function runProfileQuery(
     return profile(search, feed, query.origin, query.dest, query.time, query.num, query);
   }
 
-  const first = await profile(search, feed, query.origin, query.via, query.time, query.num, query);
+  const via = query.via;
+  const first = await profile(search, feed, query.origin, via, query.time, query.num, query);
+
+  // The onward searches know their own departure time, so none of them is waiting on another and
+  // they all go out at once: a planner with a pool of workers spreads them over it, and one with a
+  // single worker queues them as it did when they were asked for one at a time.
+  const onward = await Promise.all(
+    first.journeys.map((leg) => profile(search, feed, via, query.dest, leg.arr, 1, query)),
+  );
+
   const journeys: Journey[] = [];
   let queries = first.queries;
 
-  for (const leg of first.journeys) {
-    const onward = await profile(search, feed, query.via, query.dest, leg.arr, 1, query);
-    queries += onward.queries;
-    const next = onward.journeys[0];
-    if (!next) continue;
+  first.journeys.forEach((leg, i) => {
+    const run = onward[i];
+    if (!run) return;
+    queries += run.queries;
+    const next = run.journeys[0];
+    if (!next) return;
     const combined = joinJourneys(leg, next);
     if (combined) journeys.push(combined);
-  }
+  });
 
   return { journeys, queries };
 }

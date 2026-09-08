@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type { FeedSession } from '../feed/feed';
 import { createStations, StationsProvider } from '../feed/stations';
 import { formatTime, parseDate, parseTime } from '../journey/time';
-import { runComparison } from '../planners';
-import type { PlannerResult } from '../planners/types';
+import { isThreaded, runComparison, threadChoices } from '../planners';
+import type { Planner, PlannerResult, Threaded } from '../planners/types';
 import { initialQuery, type QueryState, queryReducer, toCode, toCodes } from '../state/query';
 import type { MapSize, Selection, Theme } from '../types';
 import { Columns } from './Columns';
@@ -31,6 +31,17 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
   const [selection, setSelection] = useState<Selection | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
 
+  const threaded = useMemo(() => feed.planners.filter(isThreaded), [feed.planners]);
+  const choices = useMemo(() => threadChoices(), []);
+  const [threads, setThreads] = useState<ReadonlyMap<string, number>>(
+    () => new Map(threaded.map((planner) => [planner.id, planner.threads])),
+  );
+
+  // A planner rebuilding its workers has none to ask, and a clock started before it finished would
+  // be timing the rebuild, so runs are held off rather than queued behind it.
+  const [rebuilding, setRebuilding] = useState(false);
+  const busy = useRef(false);
+
   // The reducer state is read inside `run`, but `run` must stay stable for the keyboard handler,
   // so read it through a ref rather than a dependency.
   const latest = useRef<QueryState>(query);
@@ -41,6 +52,7 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
   const generation = useRef(0);
 
   const run = useCallback(async () => {
+    if (busy.current) return;
     const current = latest.current;
     const origin = toCode(current.origin, stations.first);
     const dest = toCode(current.dest, stations.first);
@@ -101,6 +113,38 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
     );
   }, [feed, stations]);
 
+  /**
+   * Give a planner a different number of workers, then ask the same question again so the change
+   * can be read off the clock.
+   */
+  const changeThreads = useCallback(
+    async (planner: Planner & Threaded, count: number) => {
+      if (planner.threads === count) return;
+      busy.current = true;
+      setRebuilding(true);
+      setStatus(`${planner.name}: building ${count} worker${count === 1 ? '' : 's'}…`);
+
+      try {
+        await planner.setThreads(count, (progress) =>
+          setStatus(
+            `${planner.name}: ${progress.phase} ${progress.entry ?? ''} · ${progress.rows.toLocaleString()} rows`,
+          ),
+        );
+        setThreads((previous) => new Map(previous).set(planner.id, count));
+      } catch (e) {
+        // The planner is left without workers, and says so when asked; clicking a count again
+        // rebuilds it.
+        setStatus(`${planner.name}: ${e instanceof Error ? e.message : String(e)}`);
+      } finally {
+        busy.current = false;
+        setRebuilding(false);
+      }
+
+      void run();
+    },
+    [run],
+  );
+
   // Re-run whenever a picker or the planner selection changes. Free-text fields wait for Enter or
   // the run button.
   // biome-ignore lint/correctness/useExhaustiveDependencies: these are the inputs that auto-run
@@ -152,8 +196,13 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
             query={query}
             planners={feed.planners}
             unavailable={feed.unavailable}
+            threaded={threaded}
+            threads={threads}
+            choices={choices}
+            rebuilding={rebuilding}
             dispatch={dispatch}
             onRun={run}
+            onThreads={changeThreads}
           />
           <main>
             <Columns
