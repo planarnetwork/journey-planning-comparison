@@ -178,6 +178,78 @@ describe('toJourney', () => {
     expect(result.transfers).toBe(1);
   });
 
+  it('keeps counting past midnight on a service the feed writes past 24:00', () => {
+    const sleeper: PlainJourney = {
+      departureTime: hhmm(21, 15),
+      arrivalTime: hhmm(33, 55),
+      legs: [
+        {
+          origin: 'PAD',
+          destination: 'PLY',
+          trip,
+          stopTimes: [
+            at('9100PADTON2', hhmm(21, 15), hhmm(21, 15)),
+            at('9100PLYMTH5', hhmm(33, 55), hhmm(33, 55)),
+          ],
+        },
+      ],
+    };
+
+    const result = toJourney(sleeper, index)!;
+    expect(result.dep).toBe(21 * 60 + 15);
+    expect(result.arr).toBe(33 * 60 + 55);
+    expect(result.duration).toBe(760);
+  });
+
+  /**
+   * What a planner that searches one day, fails, and searches the next hands back: the second day's
+   * legs are in that day's own seconds from midnight, so left alone the journey arrives before it
+   * departed.
+   */
+  it('puts a journey stitched out of two days onto one clock', () => {
+    const overnight: PlainJourney = {
+      departureTime: hhmm(23, 10),
+      arrivalTime: hhmm(23, 55) + 86400,
+      legs: [
+        {
+          origin: 'PAD',
+          destination: 'RDG',
+          trip,
+          stopTimes: [
+            at('9100PADTON2', hhmm(23, 10), hhmm(23, 10)),
+            at('9100RDNGSTN7', hhmm(23, 40), hhmm(23, 40)),
+          ],
+        },
+        { origin: 'RDG', destination: 'RDG', duration: 300, startTime: 60, endTime: 86340 },
+        {
+          origin: 'RDG',
+          destination: 'PLY',
+          trip,
+          // The next morning, and numbered from its own midnight.
+          stopTimes: [
+            at('9100RDNGSTN7', hhmm(6, 15), hhmm(6, 15)),
+            at('9100PLYMTH5', hhmm(9, 20), hhmm(9, 20)),
+          ],
+        },
+      ],
+    };
+
+    const result = toJourney(overnight, index)!;
+    const [first, change, second] = result.legs;
+
+    expect(first!.arr).toBe(23 * 60 + 40);
+    expect(change!.dep).toBe(23 * 60 + 40);
+    expect(change!.arr).toBe(23 * 60 + 45);
+    // The morning legs carry a day, so the change is an overnight wait and not a negative one.
+    expect(second!.dep).toBe(24 * 60 + 6 * 60 + 15);
+    expect(second!.arr).toBe(24 * 60 + 9 * 60 + 20);
+    expect(second!.dep - change!.arr).toBe(390);
+    expect(result.duration).toBe(10 * 60 + 10);
+
+    if (!isTrainLeg(second!)) throw new Error('expected a train leg');
+    expect(second.points.map((p) => p.arr ?? p.dep)).toEqual([24 * 60 + 375, 24 * 60 + 560]);
+  });
+
   it('names a stop the index does not know rather than dropping it', () => {
     const elsewhere: PlainJourney = {
       ...journey,

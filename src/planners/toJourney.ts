@@ -48,6 +48,9 @@ export interface PlainJourney {
 /** A timetable leg carries the trip it was taken on; a transfer is the same shape without one. */
 const isTimetableLeg = (leg: PlainLeg): leg is PlainTimetableLeg => 'trip' in leg;
 
+/** Seconds in a day. A GTFS time runs past it rather than wrapping, and so does a journey's. */
+const DAY = 86400;
+
 /**
  * Turn a journey as a planner returns it into the one the page draws.
  *
@@ -55,16 +58,33 @@ const isTimetableLeg = (leg: PlainLeg): leg is PlainTimetableLeg => 'trip' in le
  * actually made, so the legs are walked forward from the journey's departure: a transfer starts
  * when whatever came before it finished. That is also what makes a leading transfer work, where
  * the journey departs before the first train does because there is a walk to the station first.
+ *
+ * The clock kept here counts seconds from the midnight the journey started at, and keeps counting
+ * past a day rather than wrapping, so that every duration on the page stays a subtraction. A feed
+ * writes an overnight service that way already — 00:30 on the second day of a trip that left at
+ * 23:50 is `24:30:00` — but a planner that answers a query by searching one day, then the next,
+ * returns each day's legs in that day's own seconds from midnight, and those have to be put back
+ * onto one clock here or a journey over midnight comes out shorter than nothing.
  */
 export function toJourney(plain: PlainJourney, index: FeedIndex): Journey | null {
   const legs: Leg[] = [];
-  let clock = toMinutes(plain.departureTime);
+  // Seconds rather than minutes, so that placing a leg against the clock does not turn on which
+  // side of a minute the feed's times happen to fall.
+  let clock = plain.departureTime;
+  let day = 0;
 
   plain.legs.forEach((leg, i) => {
     if (isTimetableLeg(leg)) {
-      const train = trainLeg(leg, index);
-      legs.push(train);
-      clock = train.arr;
+      const times = leg.stopTimes;
+      const departure = times[0]?.departureTime ?? 0;
+      const arrival = times[times.length - 1]?.arrivalTime ?? 0;
+
+      // A leg that would leave before the one in front of it arrived is a later day's, so it moves
+      // forward whole days until it no longer is.
+      while (departure + day < clock) day += DAY;
+
+      legs.push(trainLeg(leg, index, day));
+      clock = arrival + day;
       return;
     }
 
@@ -72,12 +92,12 @@ export function toJourney(plain: PlainJourney, index: FeedIndex): Journey | null
       mode: transferMode(leg.mode),
       from: leg.origin,
       to: leg.destination,
-      dep: clock,
-      arr: clock + toMinutes(leg.duration),
+      dep: toMinutes(clock),
+      arr: toMinutes(clock + leg.duration),
       id: `transfer-${i}`,
     };
     legs.push(transfer);
-    clock = transfer.arr;
+    clock += leg.duration;
   });
 
   return packJourney(legs);
@@ -102,7 +122,8 @@ export function describeTrip(index: FeedIndex, trip: PlainTrip): TripMeta {
   };
 }
 
-function trainLeg(leg: PlainTimetableLeg, index: FeedIndex): TrainLeg {
+/** `day` is the seconds to add to the leg's own times to put it on the journey's clock. */
+function trainLeg(leg: PlainTimetableLeg, index: FeedIndex, day: number): TrainLeg {
   const times = leg.stopTimes;
   const first = times[0];
   const last = times[times.length - 1];
@@ -114,8 +135,8 @@ function trainLeg(leg: PlainTimetableLeg, index: FeedIndex): TrainLeg {
 
   const points: CallingPoint[] = usable.map((time, i) => ({
     stop: stationOf(index, time),
-    arr: i === 0 ? null : toMinutes(time.arrivalTime),
-    dep: i === usable.length - 1 ? null : toMinutes(time.departureTime),
+    arr: i === 0 ? null : toMinutes(time.arrivalTime + day),
+    dep: i === usable.length - 1 ? null : toMinutes(time.departureTime + day),
     platform: index.stops[time.stop]?.platform ?? null,
   }));
 
@@ -126,8 +147,8 @@ function trainLeg(leg: PlainTimetableLeg, index: FeedIndex): TrainLeg {
     trip: leg.trip.tripId,
     from: leg.origin,
     to: leg.destination,
-    dep: toMinutes(first?.departureTime ?? 0),
-    arr: toMinutes(last?.arrivalTime ?? 0),
+    dep: toMinutes((first?.departureTime ?? 0) + day),
+    arr: toMinutes((last?.arrivalTime ?? 0) + day),
     toc: meta.toc || '??',
     operator: meta.operator,
     headcode: meta.headcode,
