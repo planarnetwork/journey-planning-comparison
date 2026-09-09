@@ -9,7 +9,6 @@ import type { FeedIndex } from '../feed/types';
 import { runProfileQuery } from './profile';
 import type { PlainJourney } from './toJourney';
 import type {
-  LoadedFeed,
   LoadProgress,
   Planner,
   PlannerQuery,
@@ -56,11 +55,9 @@ export class RaptorJourneyPlanner implements Planner, Threaded {
   async load(
     bytes: ArrayBuffer,
     onProgress?: (progress: LoadProgress) => void,
-  ): Promise<LoadedFeed> {
+  ): Promise<void> {
     this.bytes = bytes;
-    const loaded = await this.open(this.count, onProgress);
-
-    return { stops: loaded.stops, trips: loaded.trips };
+    await this.open(this.count, onProgress);
   }
 
   /**

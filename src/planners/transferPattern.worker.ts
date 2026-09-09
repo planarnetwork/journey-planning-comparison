@@ -1,6 +1,5 @@
 import {
   DepartAfterQuery,
-  type GtfsData,
   LazyTransferTreeRepository,
   loadGtfs,
   PatternLoader,
@@ -24,7 +23,6 @@ import type {
  * thread drawing the page.
  */
 let query: DepartAfterQuery | undefined;
-let counts: { stops: number; trips: number } | undefined;
 
 // `self` is typed as a Window here, because the DOM lib and the WebWorker lib cannot both be on
 // without colliding, and the rest of the app needs the DOM one.
@@ -82,9 +80,8 @@ async function load(
   });
 
   query = new DepartAfterQuery(gtfs, patterns);
-  counts = { stops: countStations(gtfs), trips: gtfs.trips.length };
 
-  return { id, type: 'loaded', ...counts };
+  return { id, type: 'loaded' };
 }
 
 /**
@@ -119,11 +116,6 @@ async function plan(
   );
 
   return { id: request.id, type: 'planned', journeys: journeys.map(toPlainJourney) };
-}
-
-/** How many stations the feed plans between, which is what the header counts. */
-function countStations(gtfs: GtfsData): number {
-  return new Set(gtfs.stations.values()).size;
 }
 
 /**

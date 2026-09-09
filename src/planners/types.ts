@@ -10,17 +10,6 @@ export interface LoadProgress {
   rows: number;
 }
 
-/**
- * What a planner built out of the feed.
- *
- * Only the sizes. Naming the places and the operators is the page's own reading of the feed, not a
- * planner's — a planner is asked to plan, and what it holds to do that is its own business.
- */
-export interface LoadedFeed {
-  /** Stations the planner will plan between. */
-  stops: number;
-  trips: number;
-}
 
 /**
  * A question put to every planner.
@@ -68,12 +57,13 @@ export interface Planner {
   readonly hue: number;
 
   /**
-   * Take the feed's bytes and build whatever this planner scans, describing what it read.
+   * Take the feed's bytes and build whatever this planner scans.
    *
    * The bytes are passed rather than a url so that a comparison of several planners downloads the
-   * feed once and posts a copy to each.
+   * feed once and posts a copy to each. Nothing comes back: describing the feed is the page's own
+   * reading of it, and what a planner holds to plan with is its own business.
    */
-  load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<LoadedFeed>;
+  load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<void>;
 
   plan(query: PlannerQuery, feed: FeedIndex): Promise<PlannerRun>;
 

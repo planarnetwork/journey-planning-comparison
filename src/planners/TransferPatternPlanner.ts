@@ -9,7 +9,7 @@ import {
   type TransferPatternMessage,
   type TransferPatternResponse,
 } from './transferPattern.protocol';
-import type { LoadedFeed, LoadProgress, Planner, PlannerQuery, PlannerRun } from './types';
+import type { LoadProgress, Planner, PlannerQuery, PlannerRun } from './types';
 
 export interface TransferPatternOptions {
   id: string;
@@ -55,7 +55,7 @@ export class TransferPatternPlanner implements Planner {
   async load(
     bytes: ArrayBuffer,
     onProgress?: (progress: LoadProgress) => void,
-  ): Promise<LoadedFeed> {
+  ): Promise<void> {
     const worker = new Worker(new URL('./transferPattern.worker.ts', import.meta.url), {
       type: 'module',
     });
@@ -67,7 +67,6 @@ export class TransferPatternPlanner implements Planner {
     try {
       const response = await this.send({ type: 'load', bytes, patterns: this.patterns });
       if (response.type !== 'loaded') throw new Error(message(response));
-      return { stops: response.stops, trips: response.trips };
     } finally {
       this.onProgress = undefined;
     }
