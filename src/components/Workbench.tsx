@@ -5,7 +5,14 @@ import type { PlaceCode } from '../feed/types';
 import { formatTime, parseDate, parseTime } from '../journey/time';
 import { isThreaded, runComparison, threadChoices } from '../planners';
 import type { Planner, PlannerResult, Threaded } from '../planners/types';
-import { initialQuery, type QueryState, queryReducer, toCode, toCodes } from '../state/query';
+import {
+  initialQuery,
+  journeyEnds,
+  type QueryState,
+  queryReducer,
+  toCode,
+  toCodes,
+} from '../state/query';
 import type { MapSize, Selection, Theme } from '../types';
 import { Columns } from './Columns';
 import { Header } from './Header';
@@ -71,15 +78,12 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
     // The places as typed — a station, or a group like London Terminals — and then the stations
     // they stand for, which is what a planner is asked about. Both are kept: the summary line reads
     // better naming the group than listing the eighteen stations it turned into.
-    const from = toCodes(current.origin, stations.first);
-    const to = toCodes(current.dest, stations.first);
-    const origins = stations.expand(from);
-    // A station on both sides is a journey of no distance, which would beat every real one. Dropped
-    // from the destinations rather than refused, so London Terminals → Reading still plans.
-    const destinations = stations.expand(to).filter((code) => !origins.includes(code));
+    const from = toCodes(current.origin, stations);
+    const to = toCodes(current.dest, stations);
+    const { origins, destinations, problem } = journeyEnds(from, to, stations);
 
-    if (origins.length === 0 || destinations.length === 0) {
-      setStatus('pick two different stations');
+    if (problem) {
+      setStatus(problem);
       return;
     }
 
@@ -90,10 +94,11 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
     }
 
     const time = parseTime(current.time) ?? 480;
-    const viaPlace = current.via.trim() ? toCode(current.via, stations.first) : null;
+    const viaPlace = current.via.trim() ? toCode(current.via, stations) : null;
     const via = viaPlace ? stations.expand([viaPlace]) : [];
+    const avoidPlaces = toCodes(current.avoid, stations);
     const avoid = stations
-      .expand(toCodes(current.avoid, stations.first))
+      .expand(avoidPlaces)
       .filter((c) => !origins.includes(c) && !destinations.includes(c));
     const num = Math.max(1, Math.min(10, current.num || 4));
     const maxTransfers = Math.max(0, Math.min(10, current.maxTransfers || 0));

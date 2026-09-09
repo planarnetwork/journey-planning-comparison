@@ -12,6 +12,8 @@ export interface Stations {
   name(code: PlaceCode): string;
   /** How a place reads in a one-line summary: a station's code, a group's name. */
   short(code: PlaceCode): string;
+  /** Whether the feed knows this code, as a station or as a group. */
+  has(code: PlaceCode): boolean;
   at(code: PlaceCode): Station | undefined;
   group(code: PlaceCode): StationGroup | undefined;
   /**
@@ -65,6 +67,7 @@ export function createStations(index: FeedIndex, groups: GroupIndex = {}): Stati
     label: (code) => `${name(code)} (${code})`,
     name,
     short: (code) => groups[code]?.name ?? code,
+    has: (code) => stations[code] !== undefined || groups[code] !== undefined,
     at: (code) => stations[code],
     group: (code) => groups[code],
     expand,

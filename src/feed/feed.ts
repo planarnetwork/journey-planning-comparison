@@ -136,37 +136,47 @@ async function load(url: string): Promise<FeedSession> {
   // parsing the same bytes into something of its own.
   type Outcome = { planner: Planner } | { planner: Planner; message: string };
 
-  const [described, outcomes] = await Promise.all([
-    describeFeed(bytes, (progress) => {
-      page.progress = progress;
-      report();
-    }).then((description) => {
-      page.done = true;
-      report();
-      return description;
-    }),
-    Promise.all(
-      planners.map(async (planner): Promise<Outcome> => {
-        try {
-          await planner.load(bytes, (progress) => {
-            const entry = loads.get(planner.id);
-            if (entry) entry.progress = progress;
-            report();
-          });
+  const reading = describeFeed(bytes, (progress) => {
+    page.progress = progress;
+    report();
+  }).then((description) => {
+    page.done = true;
+    report();
+    return description;
+  });
+
+  const loading = Promise.all(
+    planners.map(async (planner): Promise<Outcome> => {
+      try {
+        await planner.load(bytes, (progress) => {
           const entry = loads.get(planner.id);
-          if (entry) entry.done = true;
+          if (entry) entry.progress = progress;
           report();
-          return { planner };
-        } catch (e) {
-          // One planner that cannot load — patterns not published yet, say — is left out rather
-          // than taking the comparison down with it.
-          planner.terminate();
-          loads.delete(planner.id);
-          report();
-          return { planner, message: e instanceof Error ? e.message : String(e) };
-        }
-      }),
-    ),
+        });
+        const entry = loads.get(planner.id);
+        if (entry) entry.done = true;
+        report();
+        return { planner };
+      } catch (e) {
+        // One planner that cannot load — patterns not published yet, say — is left out rather
+        // than taking the comparison down with it.
+        planner.terminate();
+        loads.delete(planner.id);
+        report();
+        return { planner, message: e instanceof Error ? e.message : String(e) };
+      }
+    }),
+  );
+
+  // The planners are waited on even when the reading has already failed. They are each holding a
+  // few hundred megabytes by then and nothing would ever stop them: a rejected Promise.all leaves
+  // the others running, and a worker with no one waiting on it is a worker that never goes away.
+  const [described, outcomes] = await Promise.all([
+    reading.catch(async (e: unknown) => {
+      for (const { planner } of await loading) planner.terminate();
+      throw e;
+    }),
+    loading,
   ]);
 
   const unavailable = outcomes.filter(

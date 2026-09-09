@@ -106,7 +106,9 @@
   width: 7px;
   height: 7px;
   border-radius: 2px;
-  background: var(--h);
+  /* The page's own reading has no planner and so no hue; without a fallback the whole declaration
+     is invalid and the dot renders as nothing at all. */
+  background: var(--h, var(--dim));
   opacity: 0.35;
   align-self: center;
 }
