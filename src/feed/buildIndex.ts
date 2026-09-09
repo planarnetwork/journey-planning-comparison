@@ -1,11 +1,12 @@
-import type { AgencyIndex, RouteIndex, Stop } from 'raptor-journey-planner';
+import type { AgencyIndex, RouteIndex, Stop } from '@gb-transit/gtfs-loader';
 import type { FeedIndex, RouteRef, Station, StationCode, StopId, StopRef } from './types';
 
 /**
- * Turn the feed as the planner read it into what the page needs to name things.
+ * Turn the feed into what the page needs to name things.
  *
- * Everything here comes from the loader: the planner returns its stops, and its routes and agencies
- * arrive when the feed is loaded. Nothing re-reads the zip.
+ * This runs in the page's own reading of the feed, beside the planners' readings of it, so the
+ * stops, routes and agencies here are the loader's own rather than whatever a planner chose to hand
+ * back. Nothing has to be asked of a journey planner to put a name on a station.
  */
 export function buildIndex(
   stops: readonly Stop[],

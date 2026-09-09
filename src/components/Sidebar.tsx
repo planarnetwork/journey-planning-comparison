@@ -47,14 +47,16 @@ export function Sidebar({
         <span className={styles.sectionLabel}>Journey</span>
         <StationInput
           title="Origin"
-          placeholder="station or CRS"
+          placeholder="station, group or several"
+          multi
           value={query.origin}
           onChange={set('origin')}
           onSubmit={onRun}
         />
         <StationInput
           title="Destination"
-          placeholder="station or CRS"
+          placeholder="station, group or several"
+          multi
           value={query.dest}
           onChange={set('dest')}
           onSubmit={onRun}
@@ -96,6 +98,11 @@ export function Sidebar({
           onChange={set('avoid')}
           onSubmit={onRun}
         />
+        <div className={styles.hint}>
+          Every field takes a group as readily as a station — London Terminals, Glasgow Cen/QSt —
+          and origin and destination take several places at once, comma separated. Either way it is
+          one search over the whole set, not one search each.
+        </div>
       </div>
 
       <div className={styles.section}>

@@ -34,7 +34,7 @@ export type TransferPatternCommand = TransferPatternRequest extends infer R
   : never;
 
 export type TransferPatternResponse =
-  | { id: number; type: 'loaded'; stops: number; trips: number }
+  | { id: number; type: 'loaded' }
   | { id: number; type: 'planned'; journeys: PlainJourney[] }
   | { id: number; type: 'error'; message: string };
 

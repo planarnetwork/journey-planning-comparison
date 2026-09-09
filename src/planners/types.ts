@@ -10,26 +10,22 @@ export interface LoadProgress {
   rows: number;
 }
 
-export interface LoadedFeed {
-  /** Stations the planner will plan between. */
-  stops: number;
-  trips: number;
-  /**
-   * The feed as this planner read it, for naming places and operators.
-   *
-   * Left out by a planner that would only be building a second copy of what another already
-   * describes — every planner here reads the same feed, so one of them saying so is enough.
-   */
-  index?: FeedIndex | undefined;
-}
-
+/**
+ * A question put to every planner.
+ *
+ * The places are sets because both packages plan between sets: a query may name several stations,
+ * or a group of them like London Terminals, and that is one pass of the search over all of them
+ * rather than one pass each. Whatever a group stood for has been expanded by the time a query gets
+ * here — a planner is asked about stations, and knows nothing of groups.
+ */
 export interface PlannerQuery {
-  origin: StationCode;
-  dest: StationCode;
+  origins: readonly StationCode[];
+  destinations: readonly StationCode[];
   date: Date;
   /** Earliest departure, minutes past midnight. */
   time: number;
-  via: StationCode | null;
+  /** Stations a journey must call at, any one of which will do. Empty where there is no via. */
+  via: readonly StationCode[];
   avoid: readonly StationCode[];
   /** Number of distinct departures wanted. */
   num: number;
@@ -60,12 +56,13 @@ export interface Planner {
   readonly hue: number;
 
   /**
-   * Take the feed's bytes and build whatever this planner scans, describing what it read.
+   * Take the feed's bytes and build whatever this planner scans.
    *
    * The bytes are passed rather than a url so that a comparison of several planners downloads the
-   * feed once and posts a copy to each.
+   * feed once and posts a copy to each. Nothing comes back: describing the feed is the page's own
+   * reading of it, and what a planner holds to plan with is its own business.
    */
-  load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<LoadedFeed>;
+  load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<void>;
 
   plan(query: PlannerQuery, feed: FeedIndex): Promise<PlannerRun>;
 

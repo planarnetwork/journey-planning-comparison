@@ -5,18 +5,10 @@ import {
   PlannerClient,
 } from 'raptor-journey-planner';
 import { version } from 'raptor-journey-planner/package.json';
-import { buildIndex } from '../feed/buildIndex';
 import type { FeedIndex } from '../feed/types';
 import { runProfileQuery } from './profile';
 import type { PlainJourney } from './toJourney';
-import type {
-  LoadedFeed,
-  LoadProgress,
-  Planner,
-  PlannerQuery,
-  PlannerRun,
-  Threaded,
-} from './types';
+import type { LoadProgress, Planner, PlannerQuery, PlannerRun, Threaded } from './types';
 
 /**
  * planarnetwork/raptor, driven through the worker client the package ships.
@@ -54,22 +46,9 @@ export class RaptorJourneyPlanner implements Planner, Threaded {
     return this.count;
   }
 
-  async load(
-    bytes: ArrayBuffer,
-    onProgress?: (progress: LoadProgress) => void,
-  ): Promise<LoadedFeed> {
+  async load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<void> {
     this.bytes = bytes;
-    const loaded = await this.open(this.count, onProgress);
-
-    const client = this.clients[0];
-    if (!client) throw new Error('No feed has been loaded yet');
-    const stops = await client.stops();
-
-    return {
-      stops: loaded.stops,
-      trips: loaded.trips,
-      index: buildIndex(stops, loaded.routes, loaded.agencies),
-    };
+    await this.open(this.count, onProgress);
   }
 
   /**

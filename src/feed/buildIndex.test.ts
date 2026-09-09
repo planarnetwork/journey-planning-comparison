@@ -1,4 +1,4 @@
-import type { AgencyIndex, RouteIndex, Stop } from 'raptor-journey-planner';
+import type { AgencyIndex, RouteIndex, Stop } from '@gb-transit/gtfs-loader';
 import { describe, expect, it } from 'vitest';
 import { buildIndex } from './buildIndex';
 

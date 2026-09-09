@@ -9,17 +9,26 @@ import { LegList } from './LegList';
 
 interface ColumnsProps {
   results: PlannerResult[];
+  /** What to say when there is nothing to show, which is not always the same thing. */
+  empty: string;
   selection: Selection | null;
   expanded: ReadonlySet<string>;
   onSelect: (selection: Selection) => void;
   onToggleLeg: (key: string) => void;
 }
 
-export function Columns({ results, selection, expanded, onSelect, onToggleLeg }: ColumnsProps) {
+export function Columns({
+  results,
+  empty,
+  selection,
+  expanded,
+  onSelect,
+  onToggleLeg,
+}: ColumnsProps) {
   if (!results.length) {
     return (
       <div className={styles.columns}>
-        <div className={styles.empty}>Set an origin and destination, then run the comparison.</div>
+        <div className={styles.empty}>{empty}</div>
       </div>
     );
   }
