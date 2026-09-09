@@ -9,9 +9,9 @@ export function formatDuration(minutes: number): string {
   return `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`;
 }
 
-/** `HH:MM` → minutes past midnight, or null if unparseable. */
+/** `HH:MM`, or the same without the colon, → minutes past midnight, or null if unparseable. */
 export function parseTime(value: string): number | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  const m = /^(\d{1,2}):?(\d{2})$/.exec(value.trim());
   if (!m) return null;
   const hh = Number(m[1]);
   const mm = Number(m[2]);

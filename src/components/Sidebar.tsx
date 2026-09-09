@@ -4,6 +4,7 @@ import type { QueryAction, QueryState } from '../state/query';
 import { plannerColor } from '../theme/colors';
 import styles from './Sidebar.module.css';
 import { StationInput } from './StationInput';
+import { TimeInput } from './TimeInput';
 
 interface SidebarProps {
   query: QueryState;
@@ -72,16 +73,7 @@ export function Sidebar({
               onKeyDown={onEnter}
             />
           </div>
-          <div className={styles.field}>
-            <label htmlFor="time">Depart</label>
-            <input
-              id="time"
-              type="time"
-              value={query.time}
-              onChange={(e) => set('time')(e.target.value)}
-              onKeyDown={onEnter}
-            />
-          </div>
+          <TimeInput title="Depart" value={query.time} onChange={set('time')} onSubmit={onRun} />
         </div>
         <StationInput
           title="Via"
