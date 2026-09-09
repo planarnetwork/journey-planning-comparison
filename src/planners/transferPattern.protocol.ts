@@ -8,7 +8,9 @@ import type { LoadProgress } from './types';
  * only difference between the two transfer-pattern planners under comparison, and it is made here
  * because it is the worker that does the fetching.
  */
-export type PatternSource = { kind: 'eager'; url: string } | { kind: 'lazy'; base: string };
+export type PatternSource =
+  | { kind: 'eager'; url: string }
+  | { kind: 'lazy'; base: string; extension: string };
 
 export type TransferPatternRequest =
   | { id: number; type: 'load'; bytes: ArrayBuffer; patterns: PatternSource }

@@ -1,4 +1,4 @@
-import { PATTERN_DIRECTORY_URL, PATTERN_FILE_URL } from '../feed/source';
+import { PATTERN_DIRECTORY_URL, PATTERN_EXTENSION, PATTERN_FILE_URL } from '../feed/source';
 import type { FeedIndex } from '../feed/types';
 import { RaptorJourneyPlanner } from './RaptorJourneyPlanner';
 import { TransferPatternPlanner } from './TransferPatternPlanner';
@@ -28,7 +28,7 @@ export const createPlanners = (): Planner[] => [
     name: 'Transfer patterns',
     sub: 'lazy — a station at a time',
     hue: 190,
-    patterns: { kind: 'lazy', base: PATTERN_DIRECTORY_URL },
+    patterns: { kind: 'lazy', base: PATTERN_DIRECTORY_URL, extension: PATTERN_EXTENSION },
   }),
 ];
 

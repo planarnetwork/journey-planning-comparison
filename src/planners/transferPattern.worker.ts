@@ -4,10 +4,13 @@ import {
   LazyTransferTreeRepository,
   loadGtfs,
   PatternLoader,
+  type PatternProvider,
+  type StopID,
   StopTable,
   type TransferPatternRepository,
   UrlPatternProvider,
 } from 'transfer-pattern-planner';
+import { brotliDecompress, looksBrotli, readable } from './brotli';
 import type { PlainJourney, PlainLeg, PlainTrip } from './toJourney';
 import type {
   PatternSource,
@@ -92,16 +95,51 @@ async function load(
  *
  * Eagerly it is one file of tens of megabytes, held in full. Lazily nothing is read until a query
  * names the station it departs from, and only the hundred most recently asked for are kept.
+ *
+ * Either way a brotli file is decompressed here rather than by the loader, since a browser cannot
+ * decompress brotli and this carries a decoder that can. Gzip is left alone — the loader reads that
+ * with `DecompressionStream`, which every environment has — so nothing pays for the decoder unless
+ * a file turns out to need it.
  */
 function readPatterns(
   source: PatternSource,
   stops: StopTable,
 ): Promise<TransferPatternRepository> | TransferPatternRepository {
   if (source.kind === 'eager') {
-    return new PatternLoader(stops).loadFromUrl(source.url);
+    return loadWholeFile(source.url, stops);
   }
 
-  return new LazyTransferTreeRepository(new UrlPatternProvider(source.base), stops);
+  return new LazyTransferTreeRepository(
+    decompressing(new UrlPatternProvider(source.base, { extension: source.extension })),
+    stops,
+  );
+}
+
+/** Fetch the whole set and read it as it downloads, decompressing on the way through. */
+async function loadWholeFile(url: string, stops: StopTable): Promise<TransferPatternRepository> {
+  const response = await fetch(url);
+  if (!response.ok || !response.body) {
+    throw new Error(
+      `Unable to fetch transfer patterns from ${url}: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return new PatternLoader(stops).load(await readable(response.body));
+}
+
+/**
+ * A provider whose bytes arrive plain, whatever they were published as.
+ *
+ * The station files are tens of kilobytes, so each is decompressed in one go rather than streamed.
+ */
+function decompressing(provider: PatternProvider): PatternProvider {
+  return {
+    async get(station: StopID): Promise<Uint8Array | undefined> {
+      const bytes = await provider.get(station);
+      if (!bytes) return undefined;
+      return looksBrotli(bytes.subarray(0, 4)) ? brotliDecompress(bytes) : bytes;
+    },
+  };
 }
 
 async function plan(

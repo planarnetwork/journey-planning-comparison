@@ -912,6 +912,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"brotli-dec-wasm@npm:2.3.2":
+  version: 2.3.2
+  resolution: "brotli-dec-wasm@npm:2.3.2"
+  checksum: 10c0/7d013a931219987cb9e9d7309beee6e9a55ed8edcebb07a74dd7f9e0398c925d3c392d714e8ac566224dd4e5dba8b3502f3333922a517e58d1173bb7a617bffa
+  languageName: node
+  linkType: hard
+
 "chai@npm:^6.2.2":
   version: 6.2.2
   resolution: "chai@npm:6.2.2"
@@ -1543,6 +1550,7 @@ __metadata:
     "@types/react-dom": "npm:^19.2.4"
     "@vitejs/plugin-react": "npm:^6.0.5"
     "@vitest/coverage-v8": "npm:^4.1.10"
+    brotli-dec-wasm: "npm:2.3.2"
     jsdom: "npm:^30.0.1"
     leaflet: "npm:^1.9.4"
     raptor-journey-planner: "npm:5.1.0"

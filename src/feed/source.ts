@@ -27,6 +27,9 @@ export const PATTERN_FILE_URL =
   import.meta.env.VITE_PATTERN_FILE_URL ??
   'https://planarnetwork.github.io/gb-transit/transfer-patterns.br';
 
+/** What a station's file is called, after the station. */
+export const PATTERN_EXTENSION = import.meta.env.VITE_PATTERN_EXTENSION ?? '.br';
+
 /** Must end in a slash, or the last segment reads as a filename and is replaced. */
 export const PATTERN_DIRECTORY_URL =
   import.meta.env.VITE_PATTERN_DIRECTORY_URL ??
