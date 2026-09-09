@@ -29,12 +29,19 @@ export interface Stations {
 export function createStations(index: FeedIndex, groups: GroupIndex = {}): Stations {
   const { stations, codes } = index;
 
+  // A station first and then a group, everywhere, so that a code in both indexes — which nothing
+  // in GTFS forbids — reads as the same place whichever of these is asked.
   const name = (code: PlaceCode): string => stations[code]?.name ?? groups[code]?.name ?? code;
 
   // Stations and groups are searched as one list, so that typing `london t` can reach London
-  // Terminals as readily as it reaches a station. Built once, since the feed does not change.
+  // Terminals as readily as it reaches a station. Built once, since the feed does not change, and
+  // with the lowercase forms the matching wants: they were being made again for every place on
+  // every keystroke, three thousand of them, and twice over inside a sort comparator.
   const places: PlaceCode[] = [...codes, ...Object.keys(groups)].sort((a, b) =>
     name(a).localeCompare(name(b)),
+  );
+  const lower = new Map<PlaceCode, { code: string; name: string }>(
+    places.map((code) => [code, { code: code.toLowerCase(), name: name(code).toLowerCase() }]),
   );
 
   const match = (query: string, limit = 40): PlaceCode[] => {
@@ -42,10 +49,13 @@ export function createStations(index: FeedIndex, groups: GroupIndex = {}): Stati
     if (!q) return [];
 
     return places
-      .filter((code) => code.toLowerCase().startsWith(q) || name(code).toLowerCase().includes(q))
+      .filter((code) => {
+        const at = lower.get(code)!;
+        return at.code.startsWith(q) || at.name.includes(q);
+      })
       .sort((a, b) => {
-        const nameA = name(a).toLowerCase();
-        const nameB = name(b).toLowerCase();
+        const nameA = lower.get(a)!.name;
+        const nameB = lower.get(b)!.name;
         return nameA.indexOf(q) - nameB.indexOf(q) || nameA.length - nameB.length;
       })
       .slice(0, limit);
@@ -66,7 +76,7 @@ export function createStations(index: FeedIndex, groups: GroupIndex = {}): Stati
     first: (query) => match(query, 1)[0],
     label: (code) => `${name(code)} (${code})`,
     name,
-    short: (code) => groups[code]?.name ?? code,
+    short: (code) => (stations[code] ? code : (groups[code]?.name ?? code)),
     has: (code) => stations[code] !== undefined || groups[code] !== undefined,
     at: (code) => stations[code],
     group: (code) => groups[code],

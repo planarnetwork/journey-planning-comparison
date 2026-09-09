@@ -62,6 +62,19 @@ describe('createStations', () => {
     expect(stations.group('KGX')).toBeUndefined();
   });
 
+  it('reads a code that is in both indexes as the station, everywhere', () => {
+    // Nothing in GTFS stops an area_id colliding with a CRS code. Whichever it is, name, short, at
+    // and group have to agree about it or the same place reads two ways.
+    const collided = createStations(index, {
+      ...groups,
+      KGX: { code: 'KGX', name: 'Kings Cross Group', stations: ['EUS', 'PAD'] },
+    });
+
+    expect(collided.name('KGX')).toBe('London Kings Cross');
+    expect(collided.short('KGX')).toBe('KGX');
+    expect(collided.at('KGX')?.name).toBe('London Kings Cross');
+  });
+
   it('has no groups at all for a feed that publishes no areas', () => {
     const bare = createStations(index);
 

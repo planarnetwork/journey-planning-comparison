@@ -10,7 +10,6 @@ export interface LoadProgress {
   rows: number;
 }
 
-
 /**
  * A question put to every planner.
  *

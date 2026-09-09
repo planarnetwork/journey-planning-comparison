@@ -8,13 +8,7 @@ import { version } from 'raptor-journey-planner/package.json';
 import type { FeedIndex } from '../feed/types';
 import { runProfileQuery } from './profile';
 import type { PlainJourney } from './toJourney';
-import type {
-  LoadProgress,
-  Planner,
-  PlannerQuery,
-  PlannerRun,
-  Threaded,
-} from './types';
+import type { LoadProgress, Planner, PlannerQuery, PlannerRun, Threaded } from './types';
 
 /**
  * planarnetwork/raptor, driven through the worker client the package ships.
@@ -52,10 +46,7 @@ export class RaptorJourneyPlanner implements Planner, Threaded {
     return this.count;
   }
 
-  async load(
-    bytes: ArrayBuffer,
-    onProgress?: (progress: LoadProgress) => void,
-  ): Promise<void> {
+  async load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<void> {
     this.bytes = bytes;
     await this.open(this.count, onProgress);
   }

@@ -78,7 +78,10 @@ describe('splitPlaces', () => {
 
 describe('toCodes', () => {
   it('resolves every place in the list', () => {
-    expect(toCodes('London Euston (EUS), London Terminals (1072)', places)).toEqual(['EUS', '1072']);
+    expect(toCodes('London Euston (EUS), London Terminals (1072)', places)).toEqual([
+      'EUS',
+      '1072',
+    ]);
   });
 });
 

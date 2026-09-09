@@ -52,10 +52,7 @@ export class TransferPatternPlanner implements Planner {
     this.patterns = options.patterns;
   }
 
-  async load(
-    bytes: ArrayBuffer,
-    onProgress?: (progress: LoadProgress) => void,
-  ): Promise<void> {
+  async load(bytes: ArrayBuffer, onProgress?: (progress: LoadProgress) => void): Promise<void> {
     const worker = new Worker(new URL('./transferPattern.worker.ts', import.meta.url), {
       type: 'module',
     });

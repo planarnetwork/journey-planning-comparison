@@ -19,6 +19,9 @@ export function describeFeed(
       const message = event.data;
       if (message.type === 'progress') return onProgress?.(message.progress);
       if (message.type === 'failed') return reject(new Error(message.message));
+      // Named rather than taken by elimination, so a message added later is ignored instead of
+      // resolving this with nothing in it.
+      if (message.type !== 'described') return;
 
       const { index, groups, trips } = message;
       resolve({ index, groups, trips });

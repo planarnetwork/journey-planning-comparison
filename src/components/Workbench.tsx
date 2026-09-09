@@ -140,7 +140,7 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
         ? `${failed.planner.name}: ${failed.error}`
         : `${places(stations, from)}→${places(stations, to)}` +
             `${viaPlace ? ` via ${stations.short(viaPlace)}` : ''}` +
-            `${avoid.length ? ` avoid ${avoid.join('/')}` : ''}` +
+            `${avoidPlaces.length ? ` avoid ${places(stations, avoidPlaces)}` : ''}` +
             ` @ ${formatTime(time)} · ≤${maxTransfers} chg · ${total.toFixed(1)} ms`,
     );
   }, [feed, stations]);
@@ -239,6 +239,11 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
           <main>
             <Columns
               results={results}
+              empty={
+                feed.planners.length === 0
+                  ? 'No planner could be loaded, so there is nothing to compare.'
+                  : 'Set an origin and destination, then run the comparison.'
+              }
               selection={selection}
               expanded={expanded}
               onSelect={setSelection}

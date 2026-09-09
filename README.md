@@ -58,12 +58,14 @@ The transfer patterns are published beside the feed, as one file for the eager p
 directory of one file per station for the lazy one. `VITE_FEED_URL`, `VITE_PATTERN_FILE_URL` and
 `VITE_PATTERN_DIRECTORY_URL` point any of them somewhere else.
 
-**No transfer patterns are published yet.** `transfer-patterns.br` and every file under
-`transfer-patterns/` answer 404, so the eager planner fails while it is loading and is listed in the
-sidebar as unavailable with the reason. The lazy one loads — it fetches nothing until a query names
-a station — and then answers every query with nothing, because the file for that station is not
-there either. Both are correct behaviour for a feed whose patterns have not been cut; until they
-are, the transfer-pattern columns can only be empty.
+**Neither transfer-pattern planner works in a browser yet, because the patterns are published as
+brotli.** No browser has `DecompressionStream("brotli")`, and GitHub Pages serves a `.br` file as
+`application/octet-stream` without `Content-Encoding: br`, so the browser does not decode it on the
+way in either. `transfer-pattern-planner` 3.2.0 works out the format from the file's first bytes and
+says which of the two is missing. The eager planner fails while it is loading, and is listed in the
+sidebar as unavailable with the reason; the lazy one loads — it fetches nothing until a query names
+a station — and fails on the first query instead. Publishing the patterns gzipped, which the package
+also reads and every environment can decompress, is what would fix both.
 
 ## Who reads the feed
 
