@@ -10,26 +10,34 @@ export interface LoadProgress {
   rows: number;
 }
 
+/**
+ * What a planner built out of the feed.
+ *
+ * Only the sizes. Naming the places and the operators is the page's own reading of the feed, not a
+ * planner's — a planner is asked to plan, and what it holds to do that is its own business.
+ */
 export interface LoadedFeed {
   /** Stations the planner will plan between. */
   stops: number;
   trips: number;
-  /**
-   * The feed as this planner read it, for naming places and operators.
-   *
-   * Left out by a planner that would only be building a second copy of what another already
-   * describes — every planner here reads the same feed, so one of them saying so is enough.
-   */
-  index?: FeedIndex | undefined;
 }
 
+/**
+ * A question put to every planner.
+ *
+ * The places are sets because both packages plan between sets: a query may name several stations,
+ * or a group of them like London Terminals, and that is one pass of the search over all of them
+ * rather than one pass each. Whatever a group stood for has been expanded by the time a query gets
+ * here — a planner is asked about stations, and knows nothing of groups.
+ */
 export interface PlannerQuery {
-  origin: StationCode;
-  dest: StationCode;
+  origins: readonly StationCode[];
+  destinations: readonly StationCode[];
   date: Date;
   /** Earliest departure, minutes past midnight. */
   time: number;
-  via: StationCode | null;
+  /** Stations a journey must call at, any one of which will do. Empty where there is no via. */
+  via: readonly StationCode[];
   avoid: readonly StationCode[];
   /** Number of distinct departures wanted. */
   num: number;

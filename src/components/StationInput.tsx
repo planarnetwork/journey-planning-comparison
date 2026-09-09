@@ -85,21 +85,27 @@ export function StationInput({
       />
       {matches.length > 0 && (
         <div className={styles.autocomplete}>
-          {matches.map((code, i) => (
-            <button
-              type="button"
-              key={code}
-              className={i === index ? `${styles.option} ${styles.optionActive}` : styles.option}
-              // mousedown fires before blur, so the click is not lost to the timer.
-              onMouseDown={(e) => {
-                e.preventDefault();
-                pick(code);
-              }}
-            >
-              <span>{stations.name(code)}</span>
-              <em>{code}</em>
-            </button>
-          ))}
+          {matches.map((code, i) => {
+            // A group is worth telling apart from a station, and its area id would mean nothing in
+            // the slot the CRS goes in, so it says how many stations it stands for instead.
+            const group = stations.group(code);
+
+            return (
+              <button
+                type="button"
+                key={code}
+                className={i === index ? `${styles.option} ${styles.optionActive}` : styles.option}
+                // mousedown fires before blur, so the click is not lost to the timer.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pick(code);
+                }}
+              >
+                <span>{stations.name(code)}</span>
+                <em>{group ? `${group.stations.length} stns` : code}</em>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

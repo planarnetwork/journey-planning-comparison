@@ -1,4 +1,4 @@
-import type { FeedStatus, PlannerLoad } from '../feed/feed';
+import type { FeedLoad, FeedStatus } from '../feed/feed';
 import { FEED_URL } from '../feed/source';
 import { plannerColor } from '../theme/colors';
 import styles from './FeedLoading.module.css';
@@ -18,8 +18,8 @@ interface FeedLoadingProps {
 /**
  * What the page shows until there is a timetable to plan against.
  *
- * The feed is 21MB compressed and a couple of hundred million rows uncompressed, and every planner
- * builds its own out of it, so this is a wait worth accounting for rather than a spinner.
+ * The feed is 21MB compressed and a couple of hundred million rows uncompressed, and every reader
+ * of it builds its own out of it, so this is a wait worth accounting for rather than a spinner.
  */
 export function FeedLoading({ status }: FeedLoadingProps) {
   return (
@@ -57,25 +57,26 @@ function Progress({ status }: { status: Exclude<FeedStatus, { state: 'ready' | '
           <span>{fraction === null ? '' : `${Math.round(fraction * 100)}%`}</span>
         </div>
 
-        {/* Every planner builds its own timetable from the same bytes, at the same time. */}
-        {loading?.downloaded && loading.planners.length > 0 && (
+        {/* The page and every planner read the same bytes at the same time, into their own. */}
+        {loading?.downloaded && loading.readers.length > 0 && (
           <div className={styles.planners}>
-            {loading.planners.map((load) => (
-              <PlannerRow key={load.planner.id} load={load} />
+            {loading.readers.map((load) => (
+              <ReaderRow key={load.planner?.id ?? 'page'} load={load} />
             ))}
           </div>
         )}
       </div>
       <div className={styles.note}>
         A national GTFS feed from planarnetwork/gb-transit, parsed in the browser. Nothing is sent
-        anywhere: every timetable is built in a worker on this machine.
+        anywhere: it is downloaded once and every timetable is built from it in a worker on this
+        machine.
       </div>
     </>
   );
 }
 
-function PlannerRow({ load }: { load: PlannerLoad }) {
-  const { planner, progress, done } = load;
+function ReaderRow({ load }: { load: FeedLoad }) {
+  const { planner, label, sub, progress, done } = load;
   const detail = done
     ? 'ready'
     : progress
@@ -91,11 +92,11 @@ function PlannerRow({ load }: { load: PlannerLoad }) {
   return (
     <div
       className={done ? `${styles.planner} ${styles.plannerDone}` : styles.planner}
-      style={{ '--h': plannerColor(planner) } as React.CSSProperties}
+      style={planner ? ({ '--h': plannerColor(planner) } as React.CSSProperties) : undefined}
     >
       <span className={styles.plannerDot} />
-      <b>{planner.name}</b>
-      <i>{planner.sub}</i>
+      <b>{label}</b>
+      <i>{sub}</i>
       <span className={styles.plannerState}>{detail}</span>
     </div>
   );

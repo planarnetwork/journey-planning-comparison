@@ -63,13 +63,20 @@ export function queryReducer(state: QueryState, action: QueryAction): QueryState
   }
 }
 
-/** Pull a CRS code out of `Name (CRS)`, falling back to a name lookup. */
+/**
+ * Pull a place code out of `Name (CODE)`, falling back to a name lookup.
+ *
+ * Three characters is a station's CRS and four is a group's area id, which in this feed is an NLC.
+ * The two cannot be confused for one another, so which index the code is in says which it is and
+ * nothing here has to.
+ */
 export function toCode(value: string, resolve: (q: string) => string | undefined): string | null {
-  const match = /\(([A-Z0-9]{3})\)$/.exec(value.trim());
+  const match = /\(([A-Z0-9]{3,4})\)$/.exec(value.trim());
   if (match?.[1]) return match[1];
   return resolve(value.trim()) ?? null;
 }
 
+/** The same, for a field that takes a comma-separated list of places. */
 export function toCodes(value: string, resolve: (q: string) => string | undefined): string[] {
   return value
     .split(',')

@@ -10,7 +10,7 @@ const HORIZON_MINUTES = 720;
 
 /**
  * One earliest-arrival search, as every planner here happens to offer: the first journeys departing
- * after a time.
+ * after a time, between a set of origins and a set of destinations.
  */
 export type Search = (
   origins: string[],
@@ -32,18 +32,26 @@ export async function runProfileQuery(
   query: PlannerQuery,
   feed: FeedIndex,
 ): Promise<PlannerRun> {
-  if (!query.via) {
-    return profile(search, feed, query.origin, query.dest, query.time, query.num, query);
+  if (query.via.length === 0) {
+    return profile(search, feed, query.origins, query.destinations, query.time, query.num, query);
   }
 
-  const via = query.via;
-  const first = await profile(search, feed, query.origin, via, query.time, query.num, query);
+  const first = await profile(search, feed, query.origins, query.via, query.time, query.num, query);
 
   // The onward searches know their own departure time, so none of them is waiting on another and
   // they all go out at once: a planner with a pool of workers spreads them over it, and one with a
   // single worker queues them as it did when they were asked for one at a time.
+  //
+  // Each leaves from the station its own half actually reached rather than from the whole via set:
+  // where the via is a group, the passenger is standing at one of its stations and the rest are
+  // somewhere else entirely.
   const onward = await Promise.all(
-    first.journeys.map((leg) => profile(search, feed, via, query.dest, leg.arr, 1, query)),
+    first.journeys.map((leg) => {
+      const arrived = leg.legs[leg.legs.length - 1]?.to;
+      return arrived === undefined
+        ? null
+        : profile(search, feed, [arrived], query.destinations, leg.arr, 1, query);
+    }),
   );
 
   const journeys: Journey[] = [];
@@ -56,11 +64,25 @@ export async function runProfileQuery(
     const next = run.journeys[0];
     if (!next) return;
     const combined = joinJourneys(leg, next);
-    if (combined) journeys.push(combined);
+    // Two halves that reach the same station by different routes catch the same onward train, and
+    // stitched they are the same journey twice. That was rare when the via was a single station and
+    // is not when it is a group of eighteen.
+    if (combined && !seen(journeys, combined)) journeys.push(combined);
   });
 
   return { journeys, queries };
 }
+
+/**
+ * Whether a journey is already among these.
+ *
+ * Departure, arrival and changes, rather than the legs: two journeys that leave and arrive together
+ * with the same number of changes are the same offer to a passenger, whichever platforms they used.
+ */
+const seen = (journeys: readonly Journey[], journey: Journey): boolean =>
+  journeys.some(
+    (o) => o.dep === journey.dep && o.arr === journey.arr && o.transfers === journey.transfers,
+  );
 
 /**
  * Ask for the first journeys after `from`, then again from a minute after the earliest of them,
@@ -69,8 +91,8 @@ export async function runProfileQuery(
 async function profile(
   search: Search,
   feed: FeedIndex,
-  origin: string,
-  dest: string,
+  origins: readonly string[],
+  destinations: readonly string[],
   from: number,
   count: number,
   query: PlannerQuery,
@@ -79,8 +101,13 @@ async function profile(
   let time = from;
   let queries = 0;
 
+  // Copied once rather than per round: the packages take arrays they may keep, so a readonly one
+  // cannot be handed straight to them.
+  const fromStations = [...origins];
+  const toStations = [...destinations];
+
   for (let round = 0; round < count * 3 && journeys.length < count; round++) {
-    const plain = await search([origin], [dest], query.date, toSeconds(time));
+    const plain = await search(fromStations, toStations, query.date, toSeconds(time));
     queries++;
 
     const found = plain
@@ -90,10 +117,7 @@ async function profile(
 
     for (const journey of found) {
       if (!allowed(journey, query)) continue;
-      const duplicate = journeys.some(
-        (o) => o.dep === journey.dep && o.arr === journey.arr && o.transfers === journey.transfers,
-      );
-      if (!duplicate) journeys.push(journey);
+      if (!seen(journeys, journey)) journeys.push(journey);
     }
 
     // Step past the earliest departure found, whether or not the constraints kept it — a journey

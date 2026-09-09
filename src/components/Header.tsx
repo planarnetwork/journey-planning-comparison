@@ -12,13 +12,14 @@ interface HeaderProps {
 }
 
 export function Header({ feed, status, mapSize, theme, onCycleMap, onToggleTheme }: HeaderProps) {
-  const { index, loaded } = feed;
+  const { index, groups, trips } = feed;
 
-  const summary = `GB rail · ${index.codes.length} stn · ${loaded.trips.toLocaleString()} trips`;
+  const summary = `GB rail · ${index.codes.length} stn · ${trips.toLocaleString()} trips`;
   const detail = [
     'gb-transit GTFS',
-    `${index.codes.length} stations, ${loaded.trips.toLocaleString()} trips`,
+    `${index.codes.length} stations, ${trips.toLocaleString()} trips`,
     `${Object.keys(index.routes).length} routes, ${Object.keys(index.operators).length} operators`,
+    `${Object.keys(groups).length} station groups`,
   ].join(' — ');
 
   return (

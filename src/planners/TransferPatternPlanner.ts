@@ -67,8 +67,6 @@ export class TransferPatternPlanner implements Planner {
     try {
       const response = await this.send({ type: 'load', bytes, patterns: this.patterns });
       if (response.type !== 'loaded') throw new Error(message(response));
-      // The feed is described by whichever planner can; this one leaves it to raptor rather than
-      // building a second copy of the same thing.
       return { stops: response.stops, trips: response.trips };
     } finally {
       this.onProgress = undefined;

@@ -5,7 +5,6 @@ import {
   PlannerClient,
 } from 'raptor-journey-planner';
 import { version } from 'raptor-journey-planner/package.json';
-import { buildIndex } from '../feed/buildIndex';
 import type { FeedIndex } from '../feed/types';
 import { runProfileQuery } from './profile';
 import type { PlainJourney } from './toJourney';
@@ -61,15 +60,7 @@ export class RaptorJourneyPlanner implements Planner, Threaded {
     this.bytes = bytes;
     const loaded = await this.open(this.count, onProgress);
 
-    const client = this.clients[0];
-    if (!client) throw new Error('No feed has been loaded yet');
-    const stops = await client.stops();
-
-    return {
-      stops: loaded.stops,
-      trips: loaded.trips,
-      index: buildIndex(stops, loaded.routes, loaded.agencies),
-    };
+    return { stops: loaded.stops, trips: loaded.trips };
   }
 
   /**

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { FeedSession } from '../feed/feed';
-import { createStations, StationsProvider } from '../feed/stations';
+import { createStations, type Stations, StationsProvider } from '../feed/stations';
+import type { PlaceCode } from '../feed/types';
 import { formatTime, parseDate, parseTime } from '../journey/time';
 import { isThreaded, runComparison, threadChoices } from '../planners';
 import type { Planner, PlannerResult, Threaded } from '../planners/types';
@@ -19,8 +20,20 @@ interface WorkbenchProps {
   onToggleTheme: () => void;
 }
 
+/**
+ * How a side of the query reads in the summary line.
+ *
+ * The places as they were asked for, not what they expanded to: `London Terminals` says what was
+ * meant, where the eighteen station codes behind it would fill the line and say less.
+ */
+const places = (stations: Stations, codes: readonly PlaceCode[]): string =>
+  codes.map(stations.short).join('/');
+
 export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: WorkbenchProps) {
-  const stations = useMemo(() => createStations(feed.index), [feed.index]);
+  const stations = useMemo(
+    () => createStations(feed.index, feed.groups),
+    [feed.index, feed.groups],
+  );
   const [query, dispatch] = useReducer(
     queryReducer,
     { index: feed.index, planners: feed.planners },
@@ -54,9 +67,18 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
   const run = useCallback(async () => {
     if (busy.current) return;
     const current = latest.current;
-    const origin = toCode(current.origin, stations.first);
-    const dest = toCode(current.dest, stations.first);
-    if (!origin || !dest || origin === dest) {
+
+    // The places as typed — a station, or a group like London Terminals — and then the stations
+    // they stand for, which is what a planner is asked about. Both are kept: the summary line reads
+    // better naming the group than listing the eighteen stations it turned into.
+    const from = toCodes(current.origin, stations.first);
+    const to = toCodes(current.dest, stations.first);
+    const origins = stations.expand(from);
+    // A station on both sides is a journey of no distance, which would beat every real one. Dropped
+    // from the destinations rather than refused, so London Terminals → Reading still plans.
+    const destinations = stations.expand(to).filter((code) => !origins.includes(code));
+
+    if (origins.length === 0 || destinations.length === 0) {
       setStatus('pick two different stations');
       return;
     }
@@ -68,8 +90,11 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
     }
 
     const time = parseTime(current.time) ?? 480;
-    const via = current.via.trim() ? toCode(current.via, stations.first) : null;
-    const avoid = toCodes(current.avoid, stations.first).filter((c) => c !== origin && c !== dest);
+    const viaPlace = current.via.trim() ? toCode(current.via, stations.first) : null;
+    const via = viaPlace ? stations.expand([viaPlace]) : [];
+    const avoid = stations
+      .expand(toCodes(current.avoid, stations.first))
+      .filter((c) => !origins.includes(c) && !destinations.includes(c));
     const num = Math.max(1, Math.min(10, current.num || 4));
     const maxTransfers = Math.max(0, Math.min(10, current.maxTransfers || 0));
     const planners = feed.planners.filter((planner) => current.planners.includes(planner.id));
@@ -80,8 +105,8 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
     const next = await runComparison(
       planners,
       {
-        origin,
-        dest,
+        origins,
+        destinations,
         date,
         time,
         via,
@@ -108,7 +133,9 @@ export function Workbench({ feed, theme, mapSize, onCycleMap, onToggleTheme }: W
     setStatus(
       failed
         ? `${failed.planner.name}: ${failed.error}`
-        : `${origin}→${dest}${via ? ` via ${via}` : ''}${avoid.length ? ` avoid ${avoid.join('/')}` : ''}` +
+        : `${places(stations, from)}→${places(stations, to)}` +
+            `${viaPlace ? ` via ${stations.short(viaPlace)}` : ''}` +
+            `${avoid.length ? ` avoid ${avoid.join('/')}` : ''}` +
             ` @ ${formatTime(time)} · ≤${maxTransfers} chg · ${total.toFixed(1)} ms`,
     );
   }, [feed, stations]);

@@ -58,31 +58,61 @@ The transfer patterns are published beside the feed, as one file for the eager p
 directory of one file per station for the lazy one. `VITE_FEED_URL`, `VITE_PATTERN_FILE_URL` and
 `VITE_PATTERN_DIRECTORY_URL` point any of them somewhere else.
 
-**Neither transfer-pattern planner works in a browser yet.** The patterns are brotli compressed and
-`transfer-pattern-planner` 3.1.0 reads them with `DecompressionStream("brotli")`, which no browser
-has — Chrome 152 answers `Unsupported compression format: 'brotli'`. Its documented way round that,
-serving the file with `Content-Encoding: br`, does not help either: the browser decodes the body but
-strips the header, so the package cannot tell it has already been decoded and decompresses it again.
-Both are left listed in the sidebar as unavailable, with the reason, and the comparison runs without
-them.
+**No transfer patterns are published yet.** `transfer-patterns.br` and every file under
+`transfer-patterns/` answer 404, so the eager planner fails while it is loading and is listed in the
+sidebar as unavailable with the reason. The lazy one loads — it fetches nothing until a query names
+a station — and then answers every query with nothing, because the file for that station is not
+there either. Both are correct behaviour for a feed whose patterns have not been cut; until they
+are, the transfer-pattern columns can only be empty.
 
-The bytes are fetched on the main thread and posted to each planner's worker, so a comparison of
-several planners downloads the feed once. The planner is loaded without a date, so any day in the
-feed's published window plans without loading again — about 100MB more than a single day would
-cost, and worth it.
+## Who reads the feed
 
-Everything a journey needs comes back from that one worker. Up to raptor 5.1.0 it did not: the
-loader kept only `trip_id` and `service_id` from trips.txt and never opened routes.txt or
-agency.txt, so a journey knew which trip it was on and nothing about who ran it, and this app read
-the zip a second time in a worker of its own to put that back. `@gb-transit/gtfs-loader` 1.2.0 and
-raptor 5.1.0 carry the route, operator, headcode, headsign and transfer mode through to a planned
-journey, and that second worker is gone.
+The bytes are downloaded once, on the main thread, and posted to every worker — so a comparison of
+several planners fetches 21MB rather than 21MB each. What none of them shares is the parsing.
 
-`src/feed/buildIndex.ts` is what remains of it: it turns the planner's stops, routes and agencies
-into the station and operator names the page shows. It re-derives which station a platform belongs
-to by walking `parentStation`, because the planner works that out to build its timetable but does
-not hand the map across the worker boundary. That is a few thousand stops, not a few hundred
-thousand trips.
+Each planner reads those bytes in a worker of its own, into whatever it scans, because a scan is
+synchronous and a worker has one thread: planners that shared one would take turns. **And the page
+reads them too**, in `src/feed/reader.worker.ts`, for the things that are nobody's timetable — the
+station names in the autocomplete, the groups a query may be asked in, the operator a leg belongs
+to.
+
+That is four readings of the same 21MB, about two and a half seconds and four hundred megabytes
+each, and they all happen at once on separate cores. It is plainly wasteful and it is deliberate.
+The alternative is for the page to ask whichever planner happened to load for whatever it needs,
+which means a planner's worker protocol grows a field every time the page wants something new out
+of the feed — `routes`, then `agencies`, then `areas` — and the page cannot show a station name
+until a journey planner has finished building a timetable. Reading it separately costs memory and
+buys independence.
+
+The page's reading is also the shortest-lived: `describeFeed` asks its worker once and stops it, so
+the feed dies as soon as it has been described and only a few thousand stations and a hundred
+routes are kept. `src/feed/buildIndex.ts` is what turns the feed's stops, routes and agencies into
+those names, walking `parentStation` to find which station a platform belongs to.
+
+A planner is loaded without a date, so any day in the feed's published window plans without loading
+again — about 100MB more than a single day would cost, and worth it.
+
+## Station groups
+
+Origin, destination, via and avoid all take a group of stations as readily as a single one —
+London Terminals, Birmingham Stns, a travelcard zone — and origin and destination also take several
+places at once, comma separated. Either way it is **one** search over the whole set rather than one
+search per station: both packages plan between a set of origins and a set of destinations, and the
+query count beside the clock shows it staying at one.
+
+The feed publishes these as GTFS Fares v2 areas, because GTFS has no station of stations:
+`parent_station` is forbidden on a station and the hierarchy is one level deep, so London Terminals
+cannot be a station holding Euston and Waterloo. `transfers.txt` would be the wrong tool as well,
+since it asserts a passenger can walk between the two stops — which those two are not.
+
+An area is a fares construct with no part in planning a journey, so no planner keeps one and
+neither package carries it across its worker boundary. The page reads the feed for itself, though,
+so `feed.areas` is simply there — `src/feed/groups.ts` only has to resolve each area's stops to the
+stations they belong to.
+
+Of the feed's 729 areas, 600 name a single station, which as a place to plan from is that station
+under a second name; those are dropped and 129 remain. The file does not say which of the rest are
+group stations and which are fare zones, so both are offered.
 
 ## What the comparison does not show
 

@@ -1,45 +1,73 @@
 import { createContext, useContext } from 'react';
-import type { FeedIndex, Station, StationCode } from './types';
+import type { FeedIndex, GroupIndex, PlaceCode, Station, StationCode, StationGroup } from './types';
 
 /** Naming and finding the places the feed plans between. */
 export interface Stations {
-  /** Codes matching an autocomplete term, best name match first. */
-  match(query: string, limit?: number): StationCode[];
+  /** Places matching an autocomplete term, best name match first. Stations and groups together. */
+  match(query: string, limit?: number): PlaceCode[];
   /** The single best match, for turning typed text into a code. */
-  first(query: string): StationCode | undefined;
-  /** `London Kings Cross (KGX)`. */
-  label(code: StationCode): string;
-  name(code: StationCode): string;
-  at(code: StationCode): Station | undefined;
+  first(query: string): PlaceCode | undefined;
+  /** `London Kings Cross (KGX)`, or `London Terminals (1072)`. */
+  label(code: PlaceCode): string;
+  name(code: PlaceCode): string;
+  /** How a place reads in a one-line summary: a station's code, a group's name. */
+  short(code: PlaceCode): string;
+  at(code: PlaceCode): Station | undefined;
+  group(code: PlaceCode): StationGroup | undefined;
+  /**
+   * The stations these places stand for, which is what a planner is actually asked about.
+   *
+   * A group becomes its members and a station stands for itself, in the order they were given and
+   * without repeats — two groups that share a station ask about it once.
+   */
+  expand(codes: readonly PlaceCode[]): StationCode[];
   readonly codes: readonly StationCode[];
 }
 
-export function createStations(index: FeedIndex): Stations {
+export function createStations(index: FeedIndex, groups: GroupIndex = {}): Stations {
   const { stations, codes } = index;
 
-  const match = (query: string, limit = 40): StationCode[] => {
+  const name = (code: PlaceCode): string => stations[code]?.name ?? groups[code]?.name ?? code;
+
+  // Stations and groups are searched as one list, so that typing `london t` can reach London
+  // Terminals as readily as it reaches a station. Built once, since the feed does not change.
+  const places: PlaceCode[] = [...codes, ...Object.keys(groups)].sort((a, b) =>
+    name(a).localeCompare(name(b)),
+  );
+
+  const match = (query: string, limit = 40): PlaceCode[] => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
 
-    return codes
-      .filter(
-        (code) =>
-          code.toLowerCase().startsWith(q) || stations[code]!.name.toLowerCase().includes(q),
-      )
+    return places
+      .filter((code) => code.toLowerCase().startsWith(q) || name(code).toLowerCase().includes(q))
       .sort((a, b) => {
-        const nameA = stations[a]!.name.toLowerCase();
-        const nameB = stations[b]!.name.toLowerCase();
+        const nameA = name(a).toLowerCase();
+        const nameB = name(b).toLowerCase();
         return nameA.indexOf(q) - nameB.indexOf(q) || nameA.length - nameB.length;
       })
       .slice(0, limit);
   };
 
+  const expand = (asked: readonly PlaceCode[]): StationCode[] => {
+    const out = new Set<StationCode>();
+    for (const code of asked) {
+      const group = groups[code];
+      if (group) for (const station of group.stations) out.add(station);
+      else out.add(code);
+    }
+    return [...out];
+  };
+
   return {
     match,
     first: (query) => match(query, 1)[0],
-    label: (code) => `${stations[code]?.name ?? code} (${code})`,
-    name: (code) => stations[code]?.name ?? code,
+    label: (code) => `${name(code)} (${code})`,
+    name,
+    short: (code) => groups[code]?.name ?? code,
     at: (code) => stations[code],
+    group: (code) => groups[code],
+    expand,
     codes,
   };
 }
