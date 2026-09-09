@@ -58,14 +58,13 @@ The transfer patterns are published beside the feed, as one file for the eager p
 directory of one file per station for the lazy one. `VITE_FEED_URL`, `VITE_PATTERN_FILE_URL` and
 `VITE_PATTERN_DIRECTORY_URL` point any of them somewhere else.
 
-**Neither transfer-pattern planner works in a browser yet, because the patterns are published as
-brotli.** No browser has `DecompressionStream("brotli")`, and GitHub Pages serves a `.br` file as
-`application/octet-stream` without `Content-Encoding: br`, so the browser does not decode it on the
-way in either. `transfer-pattern-planner` 3.2.0 works out the format from the file's first bytes and
-says which of the two is missing. The eager planner fails while it is loading, and is listed in the
-sidebar as unavailable with the reason; the lazy one loads — it fetches nothing until a query names
-a station — and fails on the first query instead. Publishing the patterns gzipped, which the package
-also reads and every environment can decompress, is what would fix both.
+**Neither transfer-pattern planner works in a browser yet.** The patterns are brotli compressed and
+`transfer-pattern-planner` 3.1.0 reads them with `DecompressionStream("brotli")`, which no browser
+has — Chrome 152 answers `Unsupported compression format: 'brotli'`. Its documented way round that,
+serving the file with `Content-Encoding: br`, does not help either: the browser decodes the body but
+strips the header, so the package cannot tell it has already been decoded and decompresses it again.
+Both are left listed in the sidebar as unavailable, with the reason, and the comparison runs without
+them.
 
 ## Who reads the feed
 
